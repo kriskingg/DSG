@@ -1,0 +1,22 @@
+name: Login with TOTP
+
+on:
+  workflow_dispatch:
+
+jobs:
+  login_with_totp:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+
+      - name: Run Login Script
+        run: |
+          python login.py <<EOF
+          ${{ secrets.TOTP }}
+          EOF

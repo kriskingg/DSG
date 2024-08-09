@@ -1,0 +1,26 @@
+name: Generate TOTP
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate_totp:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+
+      - name: Generate TOTP
+        id: generate_totp
+        run: |
+          python -c "import pyotp, os; print(pyotp.TOTP(os.getenv('TOTP_SECRET_KEY')).now())" > totp.txt
+          echo "::set-output name=totp::$(cat totp.txt)"
+
+      - name: Store TOTP in GitHub Secrets
+        run: |
+          echo "TOTP=$(cat totp.txt)" >> $GITHUB_ENV
