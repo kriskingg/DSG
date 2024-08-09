@@ -1,0 +1,47 @@
+name: ALPHA ETF Trading Strategy
+
+on:
+  schedule:
+    - cron: '22 9 * * *'  # At 9:22 AM UTC daily
+    - cron: '35 9 * * *'  # At 9:35 AM UTC daily
+
+jobs:
+  entry_check:
+    if: github.event.schedule == '22 9 * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pandas
+
+      - name: Run entry condition script
+        run: python entry_script.py  # This script should implement the entry logic
+
+  reset_check:
+    if: github.event.schedule == '35 9 * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pandas
+
+      - name: Run reset condition script
+        run: python reset_script.py  # This script should implement the reset logic
