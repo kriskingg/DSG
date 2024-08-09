@@ -1,11 +1,12 @@
 name: Generate TOTP
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: # Allows manual triggering of the workflow from the Actions tab
 
 jobs:
   generate_totp:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -19,8 +20,8 @@ jobs:
         id: generate_totp
         run: |
           python -c "import pyotp, os; print(pyotp.TOTP(os.getenv('TOTP_SECRET_KEY')).now())" > totp.txt
-          echo "::set-output name=totp::$(cat totp.txt)"
-
-      - name: Store TOTP in GitHub Secrets
-        run: |
           echo "TOTP=$(cat totp.txt)" >> $GITHUB_ENV
+
+      - name: Display TOTP
+        run: |
+          echo "Generated TOTP: $TOTP"
