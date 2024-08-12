@@ -20,9 +20,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run Python script
+      - name: Run Login Script
+        run: |
+          ACCESS_TOKEN=$(python login.py)
+          echo "ACCESS_TOKEN=${ACCESS_TOKEN}" >> $GITHUB_ENV
+        env:
+          YOUR_API_KEY: ${{ secrets.YOUR_API_KEY }}
+          YOUR_CLIENT_CODE: ${{ secrets.YOUR_CLIENT_CODE }}
+          YOUR_PASSWORD: ${{ secrets.YOUR_PASSWORD }}
+          YOUR_APPLICATION_ID: ${{ secrets.YOUR_APPLICATION_ID }}
+          TOTP: ${{ secrets.TOTP }}  # If TOTP is required for login
+
+      - name: Run Trading Script
         run: |
           python chartink_script_test_2.py
         env:
           YOUR_API_KEY: ${{ secrets.YOUR_API_KEY }}
-          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          ACCESS_TOKEN: ${{ env.ACCESS_TOKEN }}
