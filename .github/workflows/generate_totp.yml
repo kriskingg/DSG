@@ -1,10 +1,14 @@
-name: Generate TOTP
+name: Login with TOTP
 
 on:
-  workflow_dispatch:  # Allows manual triggering of the workflow from the Actions tab
+  workflow_dispatch:
+    inputs:
+      totp:
+        description: 'TOTP for Login'
+        required: true
 
 jobs:
-  generate_totp:
+  login_with_totp:
     runs-on: ubuntu-latest
 
     steps:
@@ -18,22 +22,14 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pyotp
+          pip install -r requirements.txt
 
-      - name: Generate TOTP
+      - name: Run Login Script
         env:
-          TOTP_SECRET_KEY: ${{ secrets.TOTP_SECRET_KEY }}
+          TOTP: ${{ github.event.inputs.totp }}
+          YOUR_API_KEY: ${{ secrets.YOUR_API_KEY }}
+          YOUR_CLIENT_CODE: ${{ secrets.YOUR_CLIENT_CODE }}
+          YOUR_PASSWORD: ${{ secrets.YOUR_PASSWORD }}
+          YOUR_APPLICATION_ID: ${{ secrets.YOUR_APPLICATION_ID }}
         run: |
-          TOTP=$(python -c 'import pyotp, os; print(pyotp.TOTP(os.getenv("TOTP_SECRET_KEY")).now())')
-          echo "Generated TOTP: $TOTP"
-          echo "TOTP=$TOTP" >> $GITHUB_ENV  # Save TOTP as an environment variable
-
-      - name: Trigger Login Workflow
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          curl -X POST \
-          -H "Accept: application/vnd.github.v3+json" \
-          -H "Authorization: token $GITHUB_TOKEN" \
-          https://api.github.com/repos/${{ github.repository }}/actions/workflows/login_with_totp.yml/dispatches \
-          -d '{"ref":"main", "inputs":{"totp":"'"$TOTP"'"}}'
+          python login.py
