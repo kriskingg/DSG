@@ -1,6 +1,8 @@
 name: Generate TOTP
 
-on: [push]
+on:
+  push:      # Triggers the workflow on a push event to any branch
+  workflow_dispatch:  # Allows you to manually trigger the workflow from GitHub's Actions tab
 
 jobs:
   generate_totp:
