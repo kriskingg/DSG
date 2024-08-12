@@ -34,17 +34,14 @@ jobs:
         run: |
           python login.py
 
-      - name: Set ACCESS_TOKEN from file
-        run: |
-          echo "ACCESS_TOKEN=$(cat access_token.txt)" >> $GITHUB_ENV
-
-      - name: Store ACCESS_TOKEN as GitHub Secret
+      - name: Encode ACCESS_TOKEN in Base64 and Set it as a GitHub Secret
         env:
           ACCESS_TOKEN: ${{ env.ACCESS_TOKEN }}
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
+          BASE64_ACCESS_TOKEN=$(echo -n $ACCESS_TOKEN | base64)
           curl -X PUT \
             -H "Authorization: token $PAT_TOKEN" \
             -H "Content-Type: application/json" \
-            -d "{\"encrypted_value\":\"$ACCESS_TOKEN\",\"key_id\":\"$(echo ${{ secrets.GITHUB_PUBLIC_KEY_ID }})\"}" \
+            -d "{\"encrypted_value\":\"$BASE64_ACCESS_TOKEN\",\"key_id\":\"$(echo ${{ secrets.GITHUB_PUBLIC_KEY_ID }})\"}" \
             https://api.github.com/repos/${{ github.repository }}/actions/secrets/ACCESS_TOKEN
