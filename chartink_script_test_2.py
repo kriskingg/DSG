@@ -19,19 +19,25 @@ Charting_Link = "https://chartink.com/screener/"
 Charting_url = 'https://chartink.com/screener/process'
 condition = "( {166311} ( latest rsi(65) < latest ema(rsi(65),35) or weekly rsi(65) < weekly ema(rsi(65),35) ) )"
 
-# Load API Key and Access Token from environment variables
+# Load API Key from environment variables
 RUPEEZY_API_KEY = os.getenv('RUPEEZY_API_KEY')
-ACCESS_TOKEN = os.getenv('ACCESS_TOKEN')
 
 if RUPEEZY_API_KEY:
     logging.debug("RUPEEZY_API_KEY is set.")
 else:
     logging.error("RUPEEZY_API_KEY is not set.")
 
-if ACCESS_TOKEN:
-    logging.debug("ACCESS_TOKEN is set.")
-else:
-    logging.error("ACCESS_TOKEN is not set.")
+def get_access_token():
+    """Read access token from the file."""
+    try:
+        with open('access_token.txt', 'r') as file:
+            return file.read().strip()
+    except FileNotFoundError:
+        logging.error("access_token.txt file not found.")
+        return None
+    except Exception as e:
+        logging.error(f"Error reading access token: {e}")
+        return None
 
 def fetch_chartink_data(condition):
     """Fetch data from Chartink based on the given condition."""
@@ -66,8 +72,13 @@ def fetch_chartink_data(condition):
 def trigger_order_on_rupeezy(order_details):
     """Trigger an order on Rupeezy."""
     api_url = "https://vortex.trade.rupeezy.in/orders/regular"
+    access_token = get_access_token()
+    if not access_token:
+        logging.error("Access token is not available.")
+        return
+
     headers = {
-        "Authorization": f"Bearer {ACCESS_TOKEN}",
+        "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json"
     }
 
