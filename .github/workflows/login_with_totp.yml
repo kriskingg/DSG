@@ -32,8 +32,8 @@ jobs:
           YOUR_PASSWORD: ${{ secrets.YOUR_PASSWORD }}
           YOUR_APPLICATION_ID: ${{ secrets.YOUR_APPLICATION_ID }}
         run: |
-          ACCESS_TOKEN=$(python login.py)
-          echo "$ACCESS_TOKEN" > access_token.txt
+          python login.py
+          cat access_token.txt  # Display the content of the access_token.txt file for verification
 
       - name: Authenticate GitHub CLI
         env:
@@ -42,7 +42,6 @@ jobs:
           echo "$PAT_TOKEN" | gh auth login --with-token
 
       - name: Set GitHub Secret
-        env:
-          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
+          ACCESS_TOKEN=$(cat access_token.txt)  # Read the token from the file
           gh secret set ACCESS_TOKEN --body "$ACCESS_TOKEN"
