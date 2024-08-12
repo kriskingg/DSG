@@ -18,10 +18,16 @@ jobs:
     - name: Install dependencies
       run: pip install pyotp
 
+    - name: Debugging Environment Variables
+      run: |
+        echo "TOTP_SECRET_KEY exists: ${{ env.TOTP_SECRET_KEY != '' }}"
+        echo "YOUR_API_KEY exists: ${{ env.YOUR_API_KEY != '' }}"
+
     - name: Generate TOTP
       env:
         TOTP_SECRET_KEY: ${{ secrets.TOTP_SECRET_KEY }}
       run: |
+        python -c "import pyotp, os; print('Environment Variable Loaded:', bool(os.getenv('TOTP_SECRET_KEY')))"
         python -c "import pyotp, os; print(pyotp.TOTP(os.getenv('TOTP_SECRET_KEY')).now())" > totp.txt
 
     - name: Display TOTP
