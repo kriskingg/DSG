@@ -5,7 +5,7 @@ on:
 
 jobs:
   run-script:
-    runs-on: ubuntu-latest  # Use GitHub-hosted runner for Linux
+    runs-on: ubuntu-latest  # Ensure this uses GitHub-hosted runner for Linux
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -13,7 +13,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: '3.8'  # Specifying version
 
       - name: Install dependencies
         run: |
