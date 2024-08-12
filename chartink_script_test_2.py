@@ -32,7 +32,10 @@ def get_access_token():
     try:
         with open('access_token.txt', 'r') as file:
             token = file.read().strip()
-            logging.debug(f"Access token retrieved: {token}")
+            if token:
+                logging.debug(f"Access token retrieved: '{token}'")
+            else:
+                logging.error("Access token is empty.")
             return token
     except FileNotFoundError:
         logging.error("access_token.txt file not found.")
