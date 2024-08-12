@@ -32,14 +32,15 @@ jobs:
           YOUR_PASSWORD: ${{ secrets.YOUR_PASSWORD }}
           YOUR_APPLICATION_ID: ${{ secrets.YOUR_APPLICATION_ID }}
         run: |
-          python login.py
+          ACCESS_TOKEN=$(python login.py)
+          echo "ACCESS_TOKEN=$ACCESS_TOKEN" > access_token.txt
 
       - name: Encode ACCESS_TOKEN in Base64 and Set it as a GitHub Secret
         env:
-          ACCESS_TOKEN: ${{ env.ACCESS_TOKEN }}
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          BASE64_ACCESS_TOKEN=$(echo -n $ACCESS_TOKEN | base64)
+          ACCESS_TOKEN=$(cat access_token.txt)
+          BASE64_ACCESS_TOKEN=$(echo -n "$ACCESS_TOKEN" | base64 | tr -d '\n')
           curl -X PUT \
             -H "Authorization: token $PAT_TOKEN" \
             -H "Content-Type: application/json" \
