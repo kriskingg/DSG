@@ -1,7 +1,11 @@
 name: Login with TOTP
 
 on:
-  workflow_dispatch:  # Allows manual triggering of the workflow from the Actions tab
+  workflow_dispatch:
+    inputs:
+      totp:
+        description: 'TOTP for Login'
+        required: true
 
 jobs:
   login_with_totp:
@@ -22,7 +26,7 @@ jobs:
 
       - name: Run Login Script
         env:
-          TOTP_SECRET_KEY: ${{ secrets.TOTP_SECRET_KEY }}
+          TOTP: ${{ github.event.inputs.totp }}
           YOUR_API_KEY: ${{ secrets.YOUR_API_KEY }}
           YOUR_CLIENT_CODE: ${{ secrets.YOUR_CLIENT_CODE }}
           YOUR_PASSWORD: ${{ secrets.YOUR_PASSWORD }}
