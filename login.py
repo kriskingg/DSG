@@ -3,7 +3,7 @@ import os
 import logging
 
 # Setup basic logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def login_and_save_token():
     try:
@@ -17,7 +17,10 @@ def login_and_save_token():
         if not totp or not api_key or not client_code or not password or not application_id:
             raise ValueError("One or more required environment variables are not set.")
 
-        logging.info(f"Using TOTP: {totp}")
+        logging.debug(f"TOTP: {totp}")
+        logging.debug(f"API Key: {api_key}")
+        logging.debug(f"Client Code: {client_code}")
+        logging.debug(f"Application ID: {application_id}")
 
         # Prepare the request
         url = "https://vortex.trade.rupeezy.in/user/login"
@@ -32,6 +35,8 @@ def login_and_save_token():
             "application_id": application_id
         }
 
+        logging.debug(f"Request Data: {data}")
+
         # Perform the login request
         response = requests.post(url, headers=headers, json=data)
         response.raise_for_status()  # Raise an exception for HTTP errors
@@ -43,7 +48,9 @@ def login_and_save_token():
             logging.info(f"ACCESS_TOKEN={access_token}")
         else:
             logging.error("Login failed or access token not found.")
-            logging.error("Response data: %s", response_data)
+            logging.error(f"Response Status Code: {response.status_code}")
+            logging.error(f"Response Text: {response.text}")
+            logging.error(f"Response Data: {response_data}")
 
     except requests.exceptions.RequestException as e:
         logging.error(f"HTTP error occurred: {e}")
