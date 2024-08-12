@@ -1,0 +1,31 @@
+name: Login with TOTP
+
+on:
+  workflow_dispatch:  # Allows manual triggering of the workflow from the Actions tab
+
+jobs:
+  login_with_totp:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Login Script
+        env:
+          TOTP_SECRET_KEY: ${{ secrets.TOTP_SECRET_KEY }}
+          YOUR_API_KEY: ${{ secrets.YOUR_API_KEY }}
+          YOUR_CLIENT_CODE: ${{ secrets.YOUR_CLIENT_CODE }}
+          YOUR_PASSWORD: ${{ secrets.YOUR_PASSWORD }}
+          YOUR_APPLICATION_ID: ${{ secrets.YOUR_APPLICATION_ID }}
+        run: |
+          python login.py
