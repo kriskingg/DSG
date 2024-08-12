@@ -1,35 +1,41 @@
-name: Generate and Use TOTP
+name: Generate TOTP
 
-on: [push]
+on: [workflow_dispatch]
 
 jobs:
-  generate_and_use_totp:
+  generate_totp:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Check out repository
-      uses: actions/checkout@v2
+      - name: Check out repository
+        uses: actions/checkout@v2
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.8
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
 
-    - name: Install dependencies
-      run: pip install pyotp
+      - name: Install dependencies
+        run: pip install pyotp
 
-    - name: Generate TOTP
-      id: generate_totp
-      env:
-        TOTP_SECRET_KEY: ${{ secrets.TOTP_SECRET_KEY }}
-      run: |
-        echo "TOTP=$(python -c 'import pyotp, os; print(pyotp.TOTP(os.getenv("TOTP_SECRET_KEY")).now())')" >> $GITHUB_ENV
+      - name: Generate TOTP
+        env:
+          TOTP_SECRET_KEY: ${{ secrets.TOTP_SECRET_KEY }}
+        run: |
+          TOTP=$(python -c 'import pyotp, os; print(pyotp.TOTP(os.getenv("TOTP_SECRET_KEY")).now())')
+          echo "Generated TOTP: $TOTP"
+          echo "TOTP=$TOTP" >> $GITHUB_ENV
 
-    - name: Use TOTP Securely
-      run: |
-        # Now use the TOTP in a secure way, e.g., in an API request
-        echo "Using the TOTP for secure login"
-        # Example of using the TOTP in a curl request (this is just an example; adjust it as needed)
-        curl -X POST "https://your-api-endpoint.com/login" \
-          -H "Authorization: Bearer ${{ secrets.YOUR_API_KEY }}" \
-          -d "totp=$TOTP"
+      - name: Trigger Login Workflow
+        uses: actions/github-script@v4
+        with:
+          script: |
+            github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'login_with_totp.yml',
+              ref: 'main',
+              inputs: {
+                totp: process.env.TOTP
+              }
+            })
