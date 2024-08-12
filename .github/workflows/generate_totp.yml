@@ -1,34 +1,26 @@
 name: Generate TOTP
 
-on:
-  workflow_dispatch:  # Allows manual triggering of the workflow
+on: [push]
 
 jobs:
   generate_totp:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+    - name: Check out repository
+      uses: actions/checkout@v2
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.8'
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
 
-      - name: Install dependencies
-        run: |
-          pip install pyotp
+    - name: Install dependencies
+      run: pip install pyotp
 
-      - name: Generate TOTP
-        run: |
-          python -c "import pyotp, os; print(pyotp.TOTP(os.getenv('TOTP_SECRET_KEY')).now())" > totp.txt
-          echo "TOTP=$(cat totp.txt)" >> $GITHUB_ENV
+    - name: Generate TOTP
+      run: |
+        python -c "import pyotp; print(pyotp.TOTP('KUGBEDKB2BCGGRNKVJIP3Q64BQROAPO7').now())" > totp.txt
 
-      - name: Display TOTP
-        run: |
-          echo "Generated TOTP: $TOTP"
-
-      - name: Clean up
-        run: |
-          rm totp.txt
+    - name: Display TOTP
+      run: cat totp.txt
