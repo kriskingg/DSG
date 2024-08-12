@@ -34,7 +34,7 @@ jobs:
         run: |
           python login.py
 
-      - name: Display Access Token
+      - name: Display Access Token File Content
         run: |
           cat access_token.txt
 
@@ -45,5 +45,7 @@ jobs:
           echo "$PAT_TOKEN" | gh auth login --with-token
 
       - name: Set GitHub Secret
+        env:
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           gh secret set ACCESS_TOKEN --body "$(cat access_token.txt)"
