@@ -1,13 +1,16 @@
 import requests
 import pyotp
+import os
 import logging
 
 # Setup basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def generate_totp():
-    """Generate TOTP code using the hardcoded secret key."""
-    totp_secret_key = "KUGBEDKB2BCGGRNKVJIP3Q64BQROAPO7"  # Hardcoded TOTP secret key
+    """Generate TOTP code using the secret key from an environment variable."""
+    totp_secret_key = os.getenv('TOTP_SECRET_KEY')
+    if not totp_secret_key:
+        raise ValueError("TOTP_SECRET_KEY is not set. Cannot generate TOTP code.")
     totp = pyotp.TOTP(totp_secret_key)
     return totp.now()
 
