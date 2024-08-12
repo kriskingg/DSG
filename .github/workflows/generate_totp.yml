@@ -1,7 +1,7 @@
 name: Generate TOTP
 
 on:
-  workflow_dispatch: # Allows manual triggering of the workflow from the Actions tab
+  workflow_dispatch:  # This trigger allows you to manually start the workflow
 
 jobs:
   generate_totp:
@@ -15,6 +15,11 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: '3.8'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyotp
 
       - name: Generate TOTP
         id: generate_totp
