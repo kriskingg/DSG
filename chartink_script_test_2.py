@@ -31,7 +31,9 @@ def get_access_token():
     """Read access token from the file."""
     try:
         with open('access_token.txt', 'r') as file:
-            return file.read().strip()
+            token = file.read().strip()
+            logging.debug(f"Access token retrieved: {token}")
+            return token
     except FileNotFoundError:
         logging.error("access_token.txt file not found.")
         return None
