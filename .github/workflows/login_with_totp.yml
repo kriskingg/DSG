@@ -66,7 +66,7 @@ jobs:
           BASE64_ACCESS_TOKEN=$(echo -n "$CLEANED_ACCESS_TOKEN" | base64)
 
           # Encrypt the ACCESS_TOKEN using the PUBLIC_KEY
-          ENCRYPTED_ACCESS_TOKEN=$(echo -n $BASE64_ACCESS_TOKEN | openssl pkeyutl -encrypt -pubin -inkey <(echo $PUBLIC_KEY | base64 --decode) | base64)
+          ENCRYPTED_ACCESS_TOKEN=$(echo -n $BASE64_ACCESS_TOKEN | openssl pkeyutl -encrypt -pubin -inkey <(echo "$PUBLIC_KEY" | base64 --decode) | base64)
 
           # Update the secret in the GitHub repository
           curl -X PUT \
@@ -77,4 +77,4 @@ jobs:
 
       - name: Verify Secret Update
         run: |
-          gh secrets list
+          gh secret list
