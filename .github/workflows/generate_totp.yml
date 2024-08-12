@@ -16,12 +16,12 @@ jobs:
         python-version: 3.8
 
     - name: Install dependencies
-      run: pip install pyotp
+      run: pip install pyotp python-dotenv
 
     - name: Debugging Environment Variables
       run: |
-        echo "TOTP_SECRET_KEY exists: ${{ env.TOTP_SECRET_KEY != '' }}"
-        echo "YOUR_API_KEY exists: ${{ env.YOUR_API_KEY != '' }}"
+        echo "TOTP_SECRET_KEY exists: ${{ secrets.TOTP_SECRET_KEY != '' }}"
+        echo "YOUR_API_KEY exists: ${{ secrets.YOUR_API_KEY != '' }}"
 
     - name: Generate TOTP
       env:
