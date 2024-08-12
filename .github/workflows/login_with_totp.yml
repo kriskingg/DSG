@@ -11,6 +11,10 @@ jobs:
   login_with_totp:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      actions: write  # Grants write permission to the GITHUB_TOKEN for actions, which includes managing secrets
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
