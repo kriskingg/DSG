@@ -2,10 +2,10 @@ import requests
 import pyotp
 import os
 import time
-from dotenv import load_dotenv
+import logging
 
-# Load environment variables from GitHub Secrets
-load_dotenv()
+# Setup basic logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def generate_totp():
     """Generate TOTP code using the secret key from an environment variable."""
@@ -44,32 +44,28 @@ def login_and_save_token():
             "application_id": application_id
         }
 
-    response = requests.post(url, headers=headers, json=data)
-    if response.status_code == 200:
-        response_data = response.json()
-        access_token = response_data.get('data', {}).get('access_token')
-        if access_token:
-            # Save the access token as a GitHub Actions output
-            with open(os.getenv('GITHUB_ENV'), 'a') as file:
-                file.write(f"ACCESS_TOKEN={access_token}\n")
-            print("Access token saved.")
+        # Perform the login request
+        response = requests.post(url, headers=headers, json=data)
+        if response.status_code == 200:
+            response_data = response.json()
+            access_token = response_data.get('data', {}).get('access_token')
+            if access_token:
+                # Save the access token as a GitHub Actions output
+                with open(os.getenv('GITHUB_ENV'), 'a') as file:
+                    file.write(f"ACCESS_TOKEN={access_token}\n")
+                logging.info("Access token saved.")
+            else:
+                logging.error("Access token not found in response.")
+                logging.error("Response data: %s", response_data)
         else:
-            print("Access token not found in response.")
-            print("Response data:", response_data)
-    else:
-        print(f"Failed to login: {response.status_code} - {response.text}")
+            logging.error(f"Failed to login: {response.status_code} - {response.text}")
 
-def unified_login_process():
-    """Generate TOTP and perform login with it."""
-    current_totp = generate_totp()
-    
-    # Wait 3 seconds to ensure TOTP timing is correct
-    time.sleep(3)
-    
-    print(f"Generated TOTP: {current_totp}")
-    
-    # Perform login with TOTP
-    login_with_totp(current_totp)
+    except requests.exceptions.RequestException as e:
+        logging.error(f"HTTP error occurred: {e}")
+    except ValueError as ve:
+        logging.error(f"Value error: {ve}")
+    except Exception as e:
+        logging.error(f"An unexpected error occurred: {e}")
 
 if __name__ == "__main__":
     login_and_save_token()
