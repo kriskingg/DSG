@@ -1,7 +1,6 @@
 import os
 import requests
 from bs4 import BeautifulSoup
-import pandas as pd
 import logging
 from time import sleep
 from datetime import datetime
@@ -9,7 +8,7 @@ import pytz
 import sqlite3
 
 # Setup basic logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname=s - %(message)s')
 
 # Constants for Chartink
 Charting_Link = "https://chartink.com/screener/"
@@ -23,12 +22,14 @@ ACCESS_TOKEN = os.getenv('ACCESS_TOKEN')
 if RUPEEZY_API_KEY:
     logging.debug("RUPEEZY_API_KEY is set.")
 else:
-    logging.error("RUPEEZY_API_KEY is not set.")
+    logging.error("RUPEEZY_API_KEY is not set. Exiting.")
+    exit(1)
 
 if ACCESS_TOKEN:
     logging.debug("ACCESS_TOKEN is set.")
 else:
-    logging.error("ACCESS_TOKEN is not set.")
+    logging.error("ACCESS_TOKEN is not set. Exiting.")
+    exit(1)
 
 def fetch_chartink_data(condition):
     """Fetch data from Chartink based on the given condition."""
