@@ -1,4 +1,4 @@
-name: Login with TOTP
+name: Login with TOTP and Save Access Token
 
 on:
   workflow_dispatch:
@@ -37,3 +37,14 @@ jobs:
       - name: Set ACCESS_TOKEN from file
         run: |
           echo "ACCESS_TOKEN=$(cat access_token.txt)" >> $GITHUB_ENV
+
+      - name: Store ACCESS_TOKEN as GitHub Secret
+        env:
+          ACCESS_TOKEN: ${{ env.ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -X PUT \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"encrypted_value\":\"$ACCESS_TOKEN\",\"key_id\":\"$(echo ${{ secrets.GITHUB_PUBLIC_KEY_ID }})\"}" \
+            https://api.github.com/repos/${{ github.repository }}/actions/secrets/ACCESS_TOKEN
