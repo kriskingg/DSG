@@ -20,12 +20,12 @@ Charting_url = 'https://chartink.com/screener/process'
 condition = "( {166311} ( latest rsi(65) < latest ema(rsi(65),35) or weekly rsi(65) < weekly ema(rsi(65),35) ) )"
 
 # Load API Key from environment variables
-RUPEEZY_API_KEY = os.getenv('RUPEEZY_API_KEY')
+YOUR_API_KEY = os.getenv('YOUR_API_KEY')
 
-if RUPEEZY_API_KEY:
-    logging.debug("RUPEEZY_API_KEY is set.")
+if YOUR_API_KEY:
+    logging.debug("YOUR_API_KEY is set.")
 else:
-    logging.error("RUPEEZY_API_KEY is not set.")
+    logging.error("YOUR_API_KEY is not set.")
 
 def get_access_token():
     """Read access token from the file."""
