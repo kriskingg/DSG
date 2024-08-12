@@ -32,4 +32,5 @@ jobs:
           YOUR_PASSWORD: ${{ secrets.YOUR_PASSWORD }}
           YOUR_APPLICATION_ID: ${{ secrets.YOUR_APPLICATION_ID }}
         run: |
-          python login.py
+          ACCESS_TOKEN=$(python login.py)
+          echo "ACCESS_TOKEN=${ACCESS_TOKEN}" >> $GITHUB_ENV
