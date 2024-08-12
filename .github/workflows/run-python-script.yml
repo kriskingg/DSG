@@ -22,7 +22,7 @@ jobs:
 
       - name: Run Python script
         run: |
-          python path/to/your_script.py
+          python chartink_script_test_2.py
         env:
           YOUR_API_KEY: ${{ secrets.YOUR_API_KEY }}
           ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
