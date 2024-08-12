@@ -46,11 +46,13 @@ def login_and_save_token():
         access_token = response_data.get('data', {}).get('access_token')
         if response.status_code == 200 and access_token:
             logging.info(f"ACCESS_TOKEN={access_token}")
+
+            # Save the access token as a GitHub Actions environment variable
+            with open(os.getenv('GITHUB_ENV'), 'a') as env_file:
+                env_file.write(f"ACCESS_TOKEN={access_token}\n")
         else:
             logging.error("Login failed or access token not found.")
-            logging.error(f"Response Status Code: {response.status_code}")
-            logging.error(f"Response Text: {response.text}")
-            logging.error(f"Response Data: {response_data}")
+            logging.error("Response data: %s", response_data)
 
     except requests.exceptions.RequestException as e:
         logging.error(f"HTTP error occurred: {e}")
