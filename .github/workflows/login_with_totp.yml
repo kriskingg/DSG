@@ -35,14 +35,46 @@ jobs:
           ACCESS_TOKEN=$(python login.py)
           echo "$ACCESS_TOKEN" > access_token.txt
 
-      - name: Fetch GitHub Public Key
+      - name: Set up GitHub CLI
+        run: |
+          sudo apt-get install gh
+
+      - name: Authenticate GitHub CLI
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          echo "$PAT_TOKEN" | gh auth login --with-token
+
+      - name: Fetch GitHub Public Key
         id: fetch-key
         run: |
-          gh auth login --with-token <<< "$PAT_TOKEN"
-          gh repo secret set ACCESS_TOKEN --env=ACCESS_TOKEN_FILE --hidden --value-file access_token.txt
+          gh api /repos/${{ github.repository }}/actions/secrets/public-key \
+            --header "Accept: application/vnd.github.v3+json" \
+            > public_key.json
+          echo "PUBLIC_KEY=$(jq -r .key < public_key.json)" >> $GITHUB_ENV
+          echo "KEY_ID=$(jq -r .key_id < public_key.json)" >> $GITHUB_ENV
+
+      - name: Encode ACCESS_TOKEN and Save as Secret
+        env:
+          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+          PUBLIC_KEY: ${{ env.PUBLIC_KEY }}
+          KEY_ID: ${{ env.KEY_ID }}
+        run: |
+          # Remove any newline characters
+          CLEANED_ACCESS_TOKEN=$(echo -n "$ACCESS_TOKEN" | tr -d '\n')
+          BASE64_ACCESS_TOKEN=$(echo -n "$CLEANED_ACCESS_TOKEN" | base64)
+
+          # Encrypt the ACCESS_TOKEN using the PUBLIC_KEY
+          ENCRYPTED_ACCESS_TOKEN=$(echo -n $BASE64_ACCESS_TOKEN | openssl pkeyutl -encrypt -pubin -inkey <(echo $PUBLIC_KEY | base64 --decode) | base64)
+
+          # Update the secret in the GitHub repository
+          curl -X PUT \
+            -H "Authorization: token $PAT_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"encrypted_value\":\"$ENCRYPTED_ACCESS_TOKEN\",\"key_id\":\"$KEY_ID\"}" \
+            https://api.github.com/repos/${{ github.repository }}/actions/secrets/ACCESS_TOKEN
 
       - name: Verify Secret Update
         run: |
-          gh repo secret list
+          gh secrets list
