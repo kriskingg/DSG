@@ -8,7 +8,7 @@ import pytz
 import sqlite3
 
 # Setup basic logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname=s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 # Constants for Chartink
 Charting_Link = "https://chartink.com/screener/"
@@ -98,10 +98,11 @@ def init_db():
                       product TEXT,
                       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
         conn.commit()
-        conn.close()
-        logging.debug("Database initialized successfully.")
     except sqlite3.Error as e:
         logging.error(f"SQLite error occurred: {e}")
+    finally:
+        conn.close()
+        logging.debug("Database initialized successfully.")
 
 def store_order(order_details):
     """Store order details in SQLite database."""
@@ -129,8 +130,6 @@ def store_order(order_details):
                 ist_time
             ))
             conn.commit()
-            conn.close()
-            logging.debug("Order stored successfully.")
             break
         except sqlite3.OperationalError as e:
             if 'database is locked' in str(e):
@@ -143,6 +142,9 @@ def store_order(order_details):
         except Exception as e:
             logging.error(f"An error occurred: {e}")
             break
+        finally:
+            conn.close()
+            logging.debug("Order stored successfully.")
 
 def get_first_day_price():
     """Get the first day order price from the database."""
@@ -151,11 +153,12 @@ def get_first_day_price():
         c = conn.cursor()
         c.execute("SELECT price FROM orders WHERE symbol = 'ALPHAETF' ORDER BY timestamp ASC LIMIT 1")
         result = c.fetchone()
-        conn.close()
         if result:
             return result[0]
     except sqlite3.Error as e:
         logging.error(f"SQLite error occurred: {e}")
+    finally:
+        conn.close()
     return None
 
 def get_last_order_quantity():
@@ -165,11 +168,12 @@ def get_last_order_quantity():
         c = conn.cursor()
         c.execute("SELECT quantity FROM orders WHERE symbol = 'ALPHAETF' ORDER BY timestamp DESC LIMIT 1")
         result = c.fetchone()
-        conn.close()
         if result:
             return result[0]
     except sqlite3.Error as e:
         logging.error(f"SQLite error occurred: {e}")
+    finally:
+        conn.close()
     return 1
 
 if __name__ == '__main__':
@@ -191,32 +195,23 @@ if __name__ == '__main__':
             order_quantity = 1  # Default quantity
             
             if first_day_price and current_price <= first_day_price * 0.99:
-                order_quantity = last_order_quantity * 2  # Double the quantity
-
-            # Place the order
+                order_quantity = last_order_quantity + 1
+            
+            # Place order
             order_details = {
-                "exchange": "NSE_EQ",
-                "token": 19640,  # Token number for ALPHAETF.
                 "symbol": "ALPHAETF",
-                "transaction_type": "BUY",
-                "product": "DELIVERY",
-                "variety": "RL",
                 "quantity": order_quantity,
                 "price": current_price,
-                "trigger_price": 0.00,
-                "disclosed_quantity": 0,
-                "validity": "DAY",
-                "validity_days": 1,
-                "is_amo": False
+                "transaction_type": "BUY",
+                "product": "CNC"
             }
-            
             response = trigger_order_on_rupeezy(order_details)
-            if response and response.get('status') == 'success':
+            
+            if response:
                 store_order(order_details)
-                logging.info(f"Order placed successfully. Response: {response}")
             else:
-                logging.error(f"Failed to place order. Response: {response}")
+                logging.error("Failed to place order.")
         else:
-            logging.info("No ALPHAETF data found. No action taken.")
+            logging.info("No ALPHAETF data found.")
     else:
-        logging.error("Failed to fetch data from Chartink.")
+        logging.error("No data received from Chartink.")
