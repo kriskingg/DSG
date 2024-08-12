@@ -33,37 +33,16 @@ jobs:
           YOUR_APPLICATION_ID: ${{ secrets.YOUR_APPLICATION_ID }}
         run: |
           ACCESS_TOKEN=$(python login.py)
-          echo "ACCESS_TOKEN=$ACCESS_TOKEN" > access_token.txt
+          echo "$ACCESS_TOKEN" > access_token.txt
 
       - name: Fetch GitHub Public Key
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
         id: fetch-key
         run: |
-          RESPONSE=$(curl -s -H "Authorization: token $PAT_TOKEN" https://api.github.com/repos/${{ github.repository }}/actions/secrets/public-key)
-          echo "PUBLIC_KEY=$(echo $RESPONSE | jq -r .key)" >> $GITHUB_ENV
-          echo "KEY_ID=$(echo $RESPONSE | jq -r .key_id)" >> $GITHUB_ENV
+          gh auth login --with-token <<< "$PAT_TOKEN"
+          gh repo secret set ACCESS_TOKEN --env=ACCESS_TOKEN_FILE --hidden --value-file access_token.txt
 
-      - name: Encode ACCESS_TOKEN and Save as Secret
-        env:
-          ACCESS_TOKEN: $(cat access_token.txt)
-          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
-          PUBLIC_KEY: ${{ env.PUBLIC_KEY }}
-          KEY_ID: ${{ env.KEY_ID }}
+      - name: Verify Secret Update
         run: |
-          # Remove any newline characters
-          CLEANED_ACCESS_TOKEN=$(echo -n "$ACCESS_TOKEN" | tr -d '\n')
-          BASE64_ACCESS_TOKEN=$(echo -n "$CLEANED_ACCESS_TOKEN" | base64)
-
-          # Save BASE64_ACCESS_TOKEN to a temporary file
-          echo -n $BASE64_ACCESS_TOKEN > base64_access_token.txt
-
-          # Encrypt the ACCESS_TOKEN using the PUBLIC_KEY with `pkeyutl`
-          ENCRYPTED_ACCESS_TOKEN=$(openssl pkeyutl -encrypt -pubin -inkey <(echo $PUBLIC_KEY | base64 --decode) -in base64_access_token.txt | base64)
-
-          # Update the secret in the GitHub repository
-          curl -X PUT \
-            -H "Authorization: token $PAT_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "{\"encrypted_value\":\"$ENCRYPTED_ACCESS_TOKEN\",\"key_id\":\"$KEY_ID\"}" \
-            https://api.github.com/repos/${{ github.repository }}/actions/secrets/ACCESS_TOKEN
+          gh repo secret list
