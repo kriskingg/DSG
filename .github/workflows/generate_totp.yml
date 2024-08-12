@@ -19,8 +19,10 @@ jobs:
       run: pip install pyotp
 
     - name: Generate TOTP
+      env:
+        TOTP_SECRET_KEY: ${{ secrets.TOTP_SECRET_KEY }}
       run: |
-        python -c "import pyotp; print(pyotp.TOTP('KUGBEDKB2BCGGRNKVJIP3Q64BQROAPO7').now())" > totp.txt
+        python -c "import pyotp, os; print(pyotp.TOTP(os.getenv('TOTP_SECRET_KEY')).now())" > totp.txt
 
     - name: Display TOTP
       run: cat totp.txt
