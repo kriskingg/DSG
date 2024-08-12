@@ -1,4 +1,4 @@
-name: Generate TOTP and Trigger Login
+name: Generate TOTP
 
 on:
   workflow_dispatch:  # Allows manual triggering of the workflow from the Actions tab
@@ -30,7 +30,7 @@ jobs:
 
       - name: Trigger Login Workflow
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}  # Updated to use PAT_TOKEN
         run: |
           curl -X POST \
           -H "Accept: application/vnd.github.v3+json" \
