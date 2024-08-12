@@ -10,6 +10,7 @@ def generate_totp():
     """Generate TOTP code using the secret key from an environment variable."""
     totp_secret_key = os.getenv('TOTP_SECRET_KEY')
     if not totp_secret_key:
+        logging.error("TOTP_SECRET_KEY is not set.")
         raise ValueError("TOTP_SECRET_KEY is not set. Cannot generate TOTP code.")
     totp = pyotp.TOTP(totp_secret_key)
     return totp.now()
@@ -50,7 +51,6 @@ def login_and_save_token():
         response_data = response.json()
         access_token = response_data.get('data', {}).get('access_token')
         if response.status_code == 200 and access_token:
-            # Print the access token (or save it as needed)
             logging.info(f"ACCESS_TOKEN={access_token}")
         else:
             logging.error("Login failed or access token not found.")
