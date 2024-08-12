@@ -40,8 +40,8 @@ def login_and_save_token():
         access_token = response_data.get('data', {}).get('access_token')
         if access_token:
             logging.info("ACCESS_TOKEN=%s", access_token)
-            with open("access_token.txt", "w") as file:
-                file.write(access_token)
+            with open(os.getenv('GITHUB_ENV'), 'a') as env_file:
+                env_file.write(f"ACCESS_TOKEN={access_token}\n")
         else:
             logging.error("Login failed or access token not found.")
             logging.error("Response data: %s", response_data)
