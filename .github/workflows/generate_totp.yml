@@ -1,6 +1,7 @@
 name: Generate TOTP
 
-on: [workflow_dispatch]
+on:
+  workflow_dispatch: # This allows you to manually trigger the workflow
 
 jobs:
   generate_totp:
@@ -23,14 +24,14 @@ jobs:
           TOTP_SECRET_KEY: ${{ secrets.TOTP_SECRET_KEY }}
         run: |
           TOTP=$(python -c 'import pyotp, os; print(pyotp.TOTP(os.getenv("TOTP_SECRET_KEY")).now())')
-          echo "Generated TOTP: $TOTP"
           echo "TOTP=$TOTP" >> $GITHUB_ENV
+          echo "Generated TOTP: $TOTP"
 
       - name: Trigger Login Workflow
         uses: actions/github-script@v4
         with:
           script: |
-            github.rest.actions.createWorkflowDispatch({
+            const result = await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: 'login_with_totp.yml',
@@ -39,3 +40,4 @@ jobs:
                 totp: process.env.TOTP
               }
             })
+            console.log(result)
