@@ -55,8 +55,11 @@ jobs:
           CLEANED_ACCESS_TOKEN=$(echo -n "$ACCESS_TOKEN" | tr -d '\n')
           BASE64_ACCESS_TOKEN=$(echo -n "$CLEANED_ACCESS_TOKEN" | base64)
 
+          # Save BASE64_ACCESS_TOKEN to a temporary file
+          echo -n $BASE64_ACCESS_TOKEN > base64_access_token.txt
+
           # Encrypt the ACCESS_TOKEN using the PUBLIC_KEY with `pkeyutl`
-          ENCRYPTED_ACCESS_TOKEN=$(echo -n $BASE64_ACCESS_TOKEN | openssl pkeyutl -encrypt -pubin -inkey <(echo $PUBLIC_KEY | base64 --decode) | base64)
+          ENCRYPTED_ACCESS_TOKEN=$(openssl pkeyutl -encrypt -pubin -inkey <(echo $PUBLIC_KEY | base64 --decode) -in base64_access_token.txt | base64)
 
           # Update the secret in the GitHub repository
           curl -X PUT \
