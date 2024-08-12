@@ -21,6 +21,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run Login Script
+        id: login
         run: |
           ACCESS_TOKEN=$(python login.py)
           echo "ACCESS_TOKEN=${ACCESS_TOKEN}" >> $GITHUB_ENV
