@@ -9,7 +9,7 @@ import pytz
 import sqlite3
 from dotenv import load_dotenv
 
-# Load environment variables from variables.txt
+# Load environment variables from .env file
 load_dotenv('D:\\Beest\\ChartinkScanner\\variables.txt')
 
 # Setup basic logging
@@ -42,21 +42,13 @@ def fetch_chartink_data(condition):
         try:
             with requests.Session() as s:
                 s.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
-                logging.debug("Headers: {}".format(s.headers))
                 r = s.get(Charting_Link)
-                logging.debug("GET request to Charting_Link status code: {}".format(r.status_code))
                 soup = BeautifulSoup(r.text, "html.parser")
                 csrf_token = soup.select_one("[name='csrf-token']")['content']
                 s.headers.update({'x-csrf-token': csrf_token})
-                logging.debug("CSRF Token: {}".format(csrf_token))
-                logging.debug("Scan Condition: {}".format(condition))
                 response = s.post(Charting_url, data={'scan_clause': condition})
-                logging.debug("POST request to Charting_url status code: {}".format(response.status_code))
-                logging.debug("Request Data: {}".format({'scan_clause': condition}))
-                response_json = response.json()
-                logging.debug("Response JSON: {}".format(response_json))
                 if response.status_code == 200:
-                    return response_json
+                    return response.json()
                 else:
                     logging.error("Failed to fetch data with status code: {}".format(response.status_code))
         except Exception as e:
@@ -72,15 +64,9 @@ def trigger_order_on_rupeezy(order_details):
         "Authorization": f"Bearer {ACCESS_TOKEN}",
         "Content-Type": "application/json"
     }
-
-    logging.debug(f"API URL: {api_url}")
-    logging.debug(f"Headers: {headers}")
-    logging.debug(f"Order Details: {order_details}")
-
     try:
         response = requests.post(api_url, json=order_details, headers=headers)
         response.raise_for_status()
-        logging.debug("Order response: %s", response.json())
         return response.json()
     except requests.exceptions.HTTPError as http_err:
         logging.error(f"HTTP error occurred: {http_err}")
@@ -92,7 +78,6 @@ def init_db():
     try:
         conn = sqlite3.connect('orders.db')
         c = conn.cursor()
-        # Create orders table if it does not exist
         c.execute('''CREATE TABLE IF NOT EXISTS orders
                      (id INTEGER PRIMARY KEY AUTOINCREMENT,
                       symbol TEXT,
@@ -114,13 +99,8 @@ def store_order(order_details):
         try:
             conn = sqlite3.connect('orders.db')
             c = conn.cursor()
-            logging.debug(f"Storing order: {order_details}")
-            
-            # Convert current time to IST
             ist = pytz.timezone('Asia/Kolkata')
             ist_time = datetime.now(ist).strftime('%Y-%m-%d %H:%M:%S')
-
-            # Insert order details into the orders table
             c.execute("""
                 INSERT INTO orders (symbol, quantity, price, order_type, product, timestamp)
                 VALUES (?, ?, ?, ?, ?, ?)
@@ -128,7 +108,7 @@ def store_order(order_details):
                 order_details['symbol'],
                 order_details['quantity'],
                 order_details['price'],
-                order_details['transaction_type'],  # Ensure this matches the correct key
+                order_details['transaction_type'],
                 order_details['product'],
                 ist_time
             ))
