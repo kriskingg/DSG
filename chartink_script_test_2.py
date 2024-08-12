@@ -6,6 +6,10 @@ from time import sleep
 from datetime import datetime
 import pytz
 import sqlite3
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Setup basic logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -15,21 +19,19 @@ Charting_Link = "https://chartink.com/screener/"
 Charting_url = 'https://chartink.com/screener/process'
 condition = "( {166311} ( latest rsi(65) < latest ema(rsi(65),35) or weekly rsi(65) < weekly ema(rsi(65),35) ) )"
 
-# Load API Key and Access Token from environment variables (GitHub Secrets)
-RUPEEZY_API_KEY = os.getenv('YOUR_API_KEY')
+# Load API Key and Access Token from environment variables
+RUPEEZY_API_KEY = os.getenv('RUPEEZY_API_KEY')
 ACCESS_TOKEN = os.getenv('ACCESS_TOKEN')
 
 if RUPEEZY_API_KEY:
     logging.debug("RUPEEZY_API_KEY is set.")
 else:
-    logging.error("RUPEEZY_API_KEY is not set. Exiting.")
-    exit(1)
+    logging.error("RUPEEZY_API_KEY is not set.")
 
 if ACCESS_TOKEN:
     logging.debug("ACCESS_TOKEN is set.")
 else:
-    logging.error("ACCESS_TOKEN is not set. Exiting.")
-    exit(1)
+    logging.error("ACCESS_TOKEN is not set.")
 
 def fetch_chartink_data(condition):
     """Fetch data from Chartink based on the given condition."""
@@ -98,11 +100,10 @@ def init_db():
                       product TEXT,
                       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
         conn.commit()
-    except sqlite3.Error as e:
-        logging.error(f"SQLite error occurred: {e}")
-    finally:
         conn.close()
         logging.debug("Database initialized successfully.")
+    except sqlite3.Error as e:
+        logging.error(f"SQLite error occurred: {e}")
 
 def store_order(order_details):
     """Store order details in SQLite database."""
@@ -130,6 +131,8 @@ def store_order(order_details):
                 ist_time
             ))
             conn.commit()
+            conn.close()
+            logging.debug("Order stored successfully.")
             break
         except sqlite3.OperationalError as e:
             if 'database is locked' in str(e):
@@ -142,9 +145,6 @@ def store_order(order_details):
         except Exception as e:
             logging.error(f"An error occurred: {e}")
             break
-        finally:
-            conn.close()
-            logging.debug("Order stored successfully.")
 
 def get_first_day_price():
     """Get the first day order price from the database."""
@@ -153,12 +153,11 @@ def get_first_day_price():
         c = conn.cursor()
         c.execute("SELECT price FROM orders WHERE symbol = 'ALPHAETF' ORDER BY timestamp ASC LIMIT 1")
         result = c.fetchone()
+        conn.close()
         if result:
             return result[0]
     except sqlite3.Error as e:
         logging.error(f"SQLite error occurred: {e}")
-    finally:
-        conn.close()
     return None
 
 def get_last_order_quantity():
@@ -168,12 +167,11 @@ def get_last_order_quantity():
         c = conn.cursor()
         c.execute("SELECT quantity FROM orders WHERE symbol = 'ALPHAETF' ORDER BY timestamp DESC LIMIT 1")
         result = c.fetchone()
+        conn.close()
         if result:
             return result[0]
     except sqlite3.Error as e:
         logging.error(f"SQLite error occurred: {e}")
-    finally:
-        conn.close()
     return 1
 
 if __name__ == '__main__':
@@ -195,23 +193,32 @@ if __name__ == '__main__':
             order_quantity = 1  # Default quantity
             
             if first_day_price and current_price <= first_day_price * 0.99:
-                order_quantity = last_order_quantity + 1
-            
-            # Place order
+                order_quantity = last_order_quantity * 2  # Double the quantity
+
+            # Place the order
             order_details = {
+                "exchange": "NSE_EQ",
+                "token": 19640,  # Token number for ALPHAETF.
                 "symbol": "ALPHAETF",
+                "transaction_type": "BUY",
+                "product": "DELIVERY",
+                "variety": "RL",
                 "quantity": order_quantity,
                 "price": current_price,
-                "transaction_type": "BUY",
-                "product": "CNC"
+                "trigger_price": 0.00,
+                "disclosed_quantity": 0,
+                "validity": "DAY",
+                "validity_days": 1,
+                "is_amo": False
             }
-            response = trigger_order_on_rupeezy(order_details)
             
-            if response:
+            response = trigger_order_on_rupeezy(order_details)
+            if response and response.get('status') == 'success':
                 store_order(order_details)
+                logging.info(f"Order placed successfully. Response: {response}")
             else:
-                logging.error("Failed to place order.")
+                logging.error(f"Failed to place order. Response: {response}")
         else:
-            logging.info("No ALPHAETF data found.")
+            logging.info("No ALPHAETF data found. No action taken.")
     else:
-        logging.error("No data received from Chartink.")
+        logging.error("Failed to fetch data from Chartink.")
