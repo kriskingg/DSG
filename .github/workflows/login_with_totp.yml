@@ -46,7 +46,7 @@ jobs:
 
       - name: Encode ACCESS_TOKEN and Save as Secret
         env:
-          ACCESS_TOKEN=$(cat access_token.txt)
+          ACCESS_TOKEN: $(cat access_token.txt)
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
           PUBLIC_KEY: ${{ env.PUBLIC_KEY }}
           KEY_ID: ${{ env.KEY_ID }}
