@@ -16,6 +16,10 @@ jobs:
         with:
           python-version: '3.8'
 
+      - name: Install dependencies
+        run: |
+          pip install pyotp
+
       - name: Generate TOTP
         id: generate_totp
         run: |
@@ -24,7 +28,7 @@ jobs:
 
       - name: Display TOTP
         run: |
-          echo "Generated TOTP: $TOTP"
+          echo "Generated TOTP: ${{ env.TOTP }}"
 
       - name: Clean up
         run: |

@@ -22,7 +22,7 @@ jobs:
 
       - name: Run Login Script
         env:
-          TOTP_SECRET_KEY: ${{ secrets.TOTP_SECRET_KEY }} # Set the environment variable for TOTP
+          TOTP_SECRET_KEY: ${{ secrets.TOTP_SECRET_KEY }}
           YOUR_API_KEY: ${{ secrets.YOUR_API_KEY }}
           YOUR_CLIENT_CODE: ${{ secrets.YOUR_CLIENT_CODE }}
           YOUR_PASSWORD: ${{ secrets.YOUR_PASSWORD }}
