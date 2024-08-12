@@ -25,3 +25,7 @@ jobs:
       - name: Display TOTP
         run: |
           echo "Generated TOTP: $TOTP"
+
+      - name: Clean up
+        run: |
+          rm totp.txt
