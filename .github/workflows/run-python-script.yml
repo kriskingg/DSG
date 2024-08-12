@@ -5,7 +5,7 @@ on:
 
 jobs:
   run-script:
-    runs-on: [self-hosted, linux]  # Change to [self-hosted, windows] if using Windows
+    runs-on: ubuntu-latest  # Use GitHub-hosted runner for Linux
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
