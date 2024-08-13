@@ -3,9 +3,6 @@ import requests
 from bs4 import BeautifulSoup
 import logging
 from time import sleep
-from datetime import datetime
-import pytz
-import sqlite3
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -101,8 +98,10 @@ def trigger_order_on_rupeezy(order_details):
     except Exception as err:
         logging.error(f"Other error occurred: {err}")
 
+# Commenting out DB-related functions for now
+"""
 def init_db():
-    """Initialize SQLite database."""
+    Initialize SQLite database.
     try:
         conn = sqlite3.connect('orders.db')
         c = conn.cursor()
@@ -122,7 +121,7 @@ def init_db():
         logging.error(f"SQLite error occurred: {e}")
 
 def store_order(order_details):
-    """Store order details in SQLite database."""
+    Store order details in SQLite database.
     retries = 5
     while retries > 0:
         try:
@@ -163,7 +162,7 @@ def store_order(order_details):
             break
 
 def get_first_day_price():
-    """Get the first day order price from the database."""
+    Get the first day order price from the database.
     try:
         conn = sqlite3.connect('orders.db')
         c = conn.cursor()
@@ -177,7 +176,7 @@ def get_first_day_price():
     return None
 
 def get_last_order_quantity():
-    """Get the quantity of the last order placed for ALPHAETF."""
+    Get the quantity of the last order placed for ALPHAETF.
     try:
         conn = sqlite3.connect('orders.db')
         c = conn.cursor()
@@ -189,9 +188,10 @@ def get_last_order_quantity():
     except sqlite3.Error as e:
         logging.error(f"SQLite error occurred: {e}")
     return 1
+"""
 
 if __name__ == '__main__':
-    init_db()  # Initialize the database
+    # init_db()  # Initialize the database (commented out)
 
     data = fetch_chartink_data(condition)
 
@@ -201,17 +201,14 @@ if __name__ == '__main__':
         if alpha_etf_data:
             logging.debug(f"Filtered ALPHAETF data: {alpha_etf_data}")
             
-            # Get the first day's order price
-            first_day_price = get_first_day_price()
-            last_order_quantity = get_last_order_quantity()
+            # Get the first day's order price (commented out)
+            # first_day_price = get_first_day_price()
+            # last_order_quantity = get_last_order_quantity()
             current_price = alpha_etf_data[0]['close']
             
             order_quantity = 1  # Default quantity
             
-            if first_day_price and current_price <= first_day_price * 0.99:
-                order_quantity = last_order_quantity * 2  # Double the quantity
-
-            # Place the order
+            # Place the order (condition simplified without database check)
             order_details = {
                 "exchange": "NSE_EQ",
                 "token": 19640,  # Token number for ALPHAETF.
@@ -230,7 +227,7 @@ if __name__ == '__main__':
             
             response = trigger_order_on_rupeezy(order_details)
             if response and response.get('status') == 'success':
-                store_order(order_details)
+                # store_order(order_details)  # Store order in DB (commented out)
                 logging.info(f"Order placed successfully. Response: {response}")
             else:
                 logging.error(f"Failed to place order. Response: {response}")
