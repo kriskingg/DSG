@@ -98,7 +98,7 @@ def trigger_order_on_rupeezy(order_details):
     except Exception as err:
         logging.error(f"Other error occurred: {err}")
 
-# Commenting out DB-related functions for now
+# Commented-out DB-related functions
 """
 def init_db():
     Initialize SQLite database.
