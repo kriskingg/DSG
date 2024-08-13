@@ -35,10 +35,6 @@ jobs:
           python login.py
 
       - name: Store Access Token as an Artifact
-        run: |
-          echo "$ACCESS_TOKEN" > access_token.txt
-        # Note: The `with:` block is not needed here, and its use was causing the error.
-        # Artifacts are stored directly using `actions/upload-artifact`.
         uses: actions/upload-artifact@v2
         with:
           name: access_token
