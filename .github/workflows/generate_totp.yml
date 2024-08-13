@@ -2,6 +2,8 @@ name: Generate TOTP
 
 on:
   workflow_dispatch:  # Allows manual triggering of the workflow from the Actions tab
+  schedule:
+    - cron: '45 3 * * 1-5'  # Schedule to run at 9:15 AM IST (3:45 AM UTC) from Monday to Friday
 
 jobs:
   generate_totp:
