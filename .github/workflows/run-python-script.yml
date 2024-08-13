@@ -21,6 +21,8 @@ jobs:
           pip install -r requirements.txt
 
       - name: Download Access Token Artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Set GH_TOKEN for GitHub CLI authentication
         run: |
           gh run download --repo ${{ github.repository }} --name access_token --dir ./token
 
