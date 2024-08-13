@@ -34,6 +34,13 @@ jobs:
         run: |
           python login.py
 
+      - name: Store Access Token as an Artifact
+        run: |
+          echo "$ACCESS_TOKEN" > access_token.txt
+        with:
+          name: access_token
+          path: access_token.txt
+
       - name: Authenticate GitHub CLI
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
