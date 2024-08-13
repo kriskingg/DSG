@@ -3,9 +3,6 @@ import requests
 from bs4 import BeautifulSoup
 import logging
 from time import sleep
-from datetime import datetime
-import pytz
-import sqlite3
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -29,20 +26,17 @@ else:
 
 def get_access_token():
     """Read access token from the file."""
-    token_file = 'access_token.txt'
-    
-    if not os.path.exists(token_file):
-        logging.error("access_token.txt file not found.")
-        return None
-
     try:
-        with open(token_file, 'r') as file:
+        with open('./token/access_token.txt', 'r') as file:
             token = file.read().strip()
             if token:
                 logging.debug(f"Access token retrieved: '{token}'")
             else:
                 logging.error("Access token is empty.")
             return token
+    except FileNotFoundError:
+        logging.error("access_token.txt file not found.")
+        return None
     except Exception as e:
         logging.error(f"Error reading access token: {e}")
         return None
@@ -113,7 +107,12 @@ if __name__ == '__main__':
         if alpha_etf_data:
             logging.debug(f"Filtered ALPHAETF data: {alpha_etf_data}")
             
-            # Sample order details
+            # Get the current price from the data
+            current_price = alpha_etf_data[0]['close']
+            
+            order_quantity = 1  # Default quantity
+            
+            # Place the order without any dependency on database logic
             order_details = {
                 "exchange": "NSE_EQ",
                 "token": 19640,  # Token number for ALPHAETF.
@@ -121,8 +120,8 @@ if __name__ == '__main__':
                 "transaction_type": "BUY",
                 "product": "DELIVERY",
                 "variety": "RL",
-                "quantity": 1,
-                "price": alpha_etf_data[0]['close'],
+                "quantity": order_quantity,
+                "price": current_price,
                 "trigger_price": 0.00,
                 "disclosed_quantity": 0,
                 "validity": "DAY",
