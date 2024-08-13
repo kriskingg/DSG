@@ -1,4 +1,4 @@
-name: Run Python Script
+name: Trade Script with DB
 
 on:
   workflow_dispatch:  # Allows manual triggering
