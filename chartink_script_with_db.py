@@ -239,6 +239,34 @@ def store_order(order_details):
             logging.error(f"An error occurred: {e}")
             break
 
+def get_first_day_price():
+    """Get the first day order price from the database."""
+    try:
+        conn = sqlite3.connect(DB_FILE_NAME)
+        c = conn.cursor()
+        c.execute("SELECT price FROM orders WHERE symbol = 'ALPHAETF' ORDER BY timestamp ASC LIMIT 1")
+        result = c.fetchone()
+        conn.close()
+        if result:
+            return result[0]
+    except sqlite3.Error as e:
+        logging.error(f"SQLite error occurred: {e}")
+    return None
+
+def get_last_order_quantity():
+    """Get the quantity of the last order placed for ALPHAETF."""
+    try:
+        conn = sqlite3.connect(DB_FILE_NAME)
+        c = conn.cursor()
+        c.execute("SELECT quantity FROM orders WHERE symbol = 'ALPHAETF' ORDER BY timestamp DESC LIMIT 1")
+        result = c.fetchone()
+        conn.close()
+        if result:
+            return result[0]
+    except sqlite3.Error as e:
+        logging.error(f"SQLite error occurred: {e}")
+    return 1
+
 if __name__ == '__main__':
     # Download the database from S3 before starting
     download_db_from_s3()
