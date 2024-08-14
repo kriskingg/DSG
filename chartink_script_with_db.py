@@ -179,6 +179,7 @@ def init_db():
 def upload_db_to_s3():
     """Upload the SQLite database to S3."""
     try:
+        logging.debug("Starting upload of the database to S3...")
         s3_client.upload_file(DB_FILE_NAME, S3_BUCKET_NAME, DB_FILE_NAME)
         logging.info(f"Database {DB_FILE_NAME} uploaded to S3 bucket {S3_BUCKET_NAME}.")
     except (NoCredentialsError, PartialCredentialsError) as e:
@@ -189,6 +190,7 @@ def upload_db_to_s3():
 def download_db_from_s3():
     """Download the SQLite database from S3."""
     try:
+        logging.debug("Starting download of the database from S3...")
         s3_client.download_file(S3_BUCKET_NAME, DB_FILE_NAME, DB_FILE_NAME)
         logging.info(f"Database {DB_FILE_NAME} downloaded from S3 bucket {S3_BUCKET_NAME}.")
     except (NoCredentialsError, PartialCredentialsError) as e:
