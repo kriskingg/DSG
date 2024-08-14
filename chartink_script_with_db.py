@@ -91,32 +91,70 @@ def fetch_chartink_data(condition):
     logging.error("All retries failed")
     return None
 
-def trigger_order_on_rupeezy(order_details):
-    """Trigger an order on Rupeezy."""
+def fetch_latest_ltp(symbol_token):
+    """Fetch the latest LTP for the given symbol token."""
+    api_url = f"https://vortex.trade.rupeezy.in/data/quote?q=NSE_EQ-{symbol_token}&mode=full"
+    access_token = get_access_token()
+    if not access_token:
+        logging.error("Access token is not available.")
+        return None
+
+    headers = {
+        "Authorization": f"Bearer {access_token}"
+    }
+
+    try:
+        response = requests.get(api_url, headers=headers)
+        response.raise_for_status()
+        response_json = response.json()
+        ltp = response_json['data'][0]['ltp']
+        logging.debug(f"Fetched LTP for token {symbol_token}: {ltp}")
+        return ltp
+    except requests.exceptions.HTTPError as http_err:
+        logging.error(f"HTTP error occurred while fetching LTP: {http_err}")
+    except Exception as err:
+        logging.error(f"Other error occurred while fetching LTP: {err}")
+    return None
+
+def trigger_order_on_rupeezy(order_details, retries=10):
+    """Trigger an order on Rupeezy with retry logic."""
     api_url = "https://vortex.trade.rupeezy.in/orders/regular"
     access_token = get_access_token()
     if not access_token:
         logging.error("Access token is not available.")
-        return
+        return None
 
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json"
     }
 
-    logging.debug(f"API URL: {api_url}")
-    logging.debug(f"Headers: {headers}")
-    logging.debug(f"Order Details: {order_details}")
+    for attempt in range(retries):
+        ltp = fetch_latest_ltp(order_details['token'])
+        if ltp and ltp <= order_details['price']:
+            order_details['price'] = ltp
+            logging.debug(f"Order attempt {attempt + 1} with LTP: {ltp}")
 
-    try:
-        response = requests.post(api_url, json=order_details, headers=headers)
-        response.raise_for_status()
-        logging.debug("Order response: %s", response.json())
-        return response.json()
-    except requests.exceptions.HTTPError as http_err:
-        logging.error(f"HTTP error occurred: {http_err}")
-    except Exception as err:
-        logging.error(f"Other error occurred: {err}")
+            try:
+                response = requests.post(api_url, json=order_details, headers=headers)
+                response.raise_for_status()
+                response_json = response.json()
+                logging.debug("Order response: %s", response_json)
+
+                if response_json.get('status') == 'success':
+                    return response_json
+                else:
+                    logging.error(f"Order failed on attempt {attempt + 1}: {response_json}")
+            except requests.exceptions.HTTPError as http_err:
+                logging.error(f"HTTP error occurred during order attempt {attempt + 1}: {http_err}")
+            except Exception as err:
+                logging.error(f"Other error occurred during order attempt {attempt + 1}: {err}")
+        else:
+            logging.info(f"LTP {ltp} is higher than order price. Retrying...")
+        sleep(2)  # Short delay before retrying
+
+    logging.error("All retries for order placement failed.")
+    return None
 
 def init_db():
     """Initialize SQLite database."""
@@ -199,34 +237,6 @@ def store_order(order_details):
             logging.error(f"An error occurred: {e}")
             break
 
-def get_first_day_price():
-    """Get the first day order price from the database."""
-    try:
-        conn = sqlite3.connect(DB_FILE_NAME)
-        c = conn.cursor()
-        c.execute("SELECT price FROM orders WHERE symbol = 'ALPHAETF' ORDER BY timestamp ASC LIMIT 1")
-        result = c.fetchone()
-        conn.close()
-        if result:
-            return result[0]
-    except sqlite3.Error as e:
-        logging.error(f"SQLite error occurred: {e}")
-    return None
-
-def get_last_order_quantity():
-    """Get the quantity of the last order placed for ALPHAETF."""
-    try:
-        conn = sqlite3.connect(DB_FILE_NAME)
-        c = conn.cursor()
-        c.execute("SELECT quantity FROM orders WHERE symbol = 'ALPHAETF' ORDER BY timestamp DESC LIMIT 1")
-        result = c.fetchone()
-        conn.close()
-        if result:
-            return result[0]
-    except sqlite3.Error as e:
-        logging.error(f"SQLite error occurred: {e}")
-    return 1
-
 if __name__ == '__main__':
     # Download the database from S3 before starting
     download_db_from_s3()
@@ -266,6 +276,7 @@ if __name__ == '__main__':
             
             response = trigger_order_on_rupeezy(order_details)
             if response and response.get('status') == 'success':
+                order_details['price'] = response['data'].get('price', current_price)  # Update with the actual price from response
                 store_order(order_details)
                 logging.info(f"Order placed successfully. Response: {response}")
                 # Upload the updated database back to S3
