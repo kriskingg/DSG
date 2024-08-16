@@ -41,6 +41,10 @@ jobs:
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws configure set region ap-south-1
 
+      - name: Validate S3 Access
+        run: |
+          python -c "from chartink_script_test_2 import validate_s3_access; validate_s3_access()"
+
       - name: Run Trading Script with S3
         run: |
           python chartink_script_test_2.py

@@ -7,7 +7,7 @@ from datetime import datetime
 import pytz
 import sqlite3
 import boto3
-from botocore.exceptions import NoCredentialsError, PartialCredentialsError
+from botocore.exceptions import NoCredentialsError, PartialCredentialsError, ClientError
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -43,6 +43,20 @@ if YOUR_API_KEY:
     logging.debug("YOUR_API_KEY is set.")
 else:
     logging.error("YOUR_API_KEY is not set.")
+
+def validate_s3_access():
+    """Validate access to the S3 bucket."""
+    try:
+        # List the contents of the bucket to validate access
+        response = s3_client.list_objects_v2(Bucket=S3_BUCKET_NAME)
+        if 'Contents' in response:
+            logging.info(f"Successfully accessed S3 bucket {S3_BUCKET_NAME}.")
+        else:
+            logging.warning(f"S3 bucket {S3_BUCKET_NAME} is empty or not accessible.")
+    except ClientError as e:
+        logging.error(f"Failed to access S3 bucket {S3_BUCKET_NAME}: {e}")
+    except Exception as e:
+        logging.error(f"Unexpected error occurred while accessing S3 bucket: {e}")
 
 def get_access_token():
     """Read access token from the file."""
@@ -157,8 +171,11 @@ def trigger_order_on_rupeezy(order_details, retries=10):
     return None
 
 def init_db():
-    """Initialize SQLite database."""
+    """Initialize SQLite database and validate S3 access."""
     try:
+        # Validate S3 access before proceeding
+        validate_s3_access()
+
         conn = sqlite3.connect(DB_FILE_NAME)
         c = conn.cursor()
         # Create orders table if it does not exist
@@ -174,7 +191,7 @@ def init_db():
         conn.close()
         logging.debug("Database initialized successfully.")
     except sqlite3.Error as e:
-        logging.error(f"SQLite error occurred: {e}")
+        logging.error(f"SQLite error occurred during initialization: {e}")
 
 def upload_db_to_s3():
     """Upload the SQLite database to S3."""
@@ -183,9 +200,11 @@ def upload_db_to_s3():
         s3_client.upload_file(DB_FILE_NAME, S3_BUCKET_NAME, DB_FILE_NAME)
         logging.info(f"Database {DB_FILE_NAME} uploaded to S3 bucket {S3_BUCKET_NAME}.")
     except (NoCredentialsError, PartialCredentialsError) as e:
-        logging.error(f"Credentials error: {e}")
+        logging.error(f"Credentials error during S3 upload: {e}")
+    except ClientError as e:
+        logging.error(f"Failed to upload {DB_FILE_NAME} to S3 bucket: {e}")
     except Exception as e:
-        logging.error(f"Error uploading database to S3: {e}")
+        logging.error(f"Unexpected error during S3 upload: {e}")
 
 def download_db_from_s3():
     """Download the SQLite database from S3."""
@@ -194,9 +213,11 @@ def download_db_from_s3():
         s3_client.download_file(S3_BUCKET_NAME, DB_FILE_NAME, DB_FILE_NAME)
         logging.info(f"Database {DB_FILE_NAME} downloaded from S3 bucket {S3_BUCKET_NAME}.")
     except (NoCredentialsError, PartialCredentialsError) as e:
-        logging.error(f"Credentials error: {e}")
+        logging.error(f"Credentials error during S3 download: {e}")
+    except ClientError as e:
+        logging.error(f"Failed to download {DB_FILE_NAME} from S3 bucket: {e}")
     except Exception as e:
-        logging.error(f"Error downloading database from S3: {e}")
+        logging.error(f"Unexpected error during S3 download: {e}")
 
 def store_order(order_details):
     """Store order details in SQLite database."""
@@ -268,6 +289,9 @@ def get_last_order_quantity():
     return 1
 
 if __name__ == '__main__':
+    # Validate S3 access before starting
+    validate_s3_access()
+
     # Download the database from S3 before starting
     download_db_from_s3()
 
