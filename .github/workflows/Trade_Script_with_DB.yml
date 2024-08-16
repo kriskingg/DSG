@@ -44,6 +44,11 @@ jobs:
       - name: Validate S3 Access
         run: |
           python -c "from chartink_script_test_2 import validate_s3_access; validate_s3_access()"
+        env:
+          YOUR_API_KEY: ${{ secrets.YOUR_API_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
 
       - name: Run Trading Script with S3
         run: |
