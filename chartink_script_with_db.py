@@ -29,7 +29,7 @@ AWS_DEFAULT_REGION = os.getenv('AWS_DEFAULT_REGION', 'ap-south-1')
 
 # S3 Bucket configuration
 S3_BUCKET_NAME = 'my-beest-db'
-DB_FILE_NAME = 'orders.db'
+DB_FILE_NAME = 'beest-orders.db'
 
 # Initialize the S3 client
 s3_client = boto3.client(
@@ -58,8 +58,55 @@ def validate_s3_access():
     except Exception as e:
         logging.error(f"Unexpected error occurred while accessing S3 bucket: {e}")
 
-# (Rest of your code remains the same)
+def download_db_from_s3():
+    """Download the SQLite database from S3."""
+    try:
+        logging.debug("Starting download of the database from S3...")
+        s3_client.download_file(S3_BUCKET_NAME, DB_FILE_NAME, DB_FILE_NAME)
+        logging.info(f"Database {DB_FILE_NAME} downloaded from S3 bucket {S3_BUCKET_NAME}.")
+    except (NoCredentialsError, PartialCredentialsError) as e:
+        logging.error(f"Credentials error during S3 download: {e}")
+    except ClientError as e:
+        logging.error(f"Failed to download {DB_FILE_NAME} from S3 bucket: {e}")
+    except Exception as e:
+        logging.error(f"Unexpected error during S3 download: {e}")
 
+def upload_db_to_s3():
+    """Upload the SQLite database to S3."""
+    try:
+        logging.debug("Starting upload of the database to S3...")
+        s3_client.upload_file(DB_FILE_NAME, S3_BUCKET_NAME, DB_FILE_NAME)
+        logging.info(f"Database {DB_FILE_NAME} uploaded to S3 bucket {S3_BUCKET_NAME}.")
+    except (NoCredentialsError, PartialCredentialsError) as e:
+        logging.error(f"Credentials error during S3 upload: {e}")
+    except ClientError as e:
+        logging.error(f"Failed to upload {DB_FILE_NAME} to S3 bucket: {e}")
+    except Exception as e:
+        logging.error(f"Unexpected error during S3 upload: {e}")
+
+def init_db():
+    """Initialize SQLite database and validate S3 access."""
+    try:
+        if not os.path.exists(DB_FILE_NAME):
+            logging.debug("Database file does not exist. Creating a new one.")
+            conn = sqlite3.connect(DB_FILE_NAME)
+            c = conn.cursor()
+            # Create orders table if it does not exist
+            c.execute('''CREATE TABLE IF NOT EXISTS orders
+                         (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          symbol TEXT,
+                          quantity INTEGER,
+                          price REAL,
+                          order_type TEXT,
+                          product TEXT,
+                          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+            conn.commit()
+            conn.close()
+            logging.debug("Database initialized successfully.")
+        else:
+            logging.debug("Database file already exists.")
+    except sqlite3.Error as e:
+        logging.error(f"SQLite error occurred during initialization: {e}")
 
 def get_access_token():
     """Read access token from the file."""
@@ -173,53 +220,6 @@ def trigger_order_on_rupeezy(order_details, retries=10):
     logging.error("All retries for order placement failed.")
     return None
 
-def init_db():
-    """Initialize SQLite database and validate S3 access."""
-    try:
-        validate_s3_access()
-
-        conn = sqlite3.connect(DB_FILE_NAME)
-        c = conn.cursor()
-        c.execute('''CREATE TABLE IF NOT EXISTS orders
-                     (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                      symbol TEXT,
-                      quantity INTEGER,
-                      price REAL,
-                      order_type TEXT,
-                      product TEXT,
-                      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-        conn.commit()
-        conn.close()
-        logging.debug("Database initialized successfully.")
-    except sqlite3.Error as e:
-        logging.error(f"SQLite error occurred during initialization: {e}")
-
-def upload_db_to_s3():
-    """Upload the SQLite database to S3."""
-    try:
-        logging.debug("Starting upload of the database to S3...")
-        s3_client.upload_file(DB_FILE_NAME, S3_BUCKET_NAME, DB_FILE_NAME)
-        logging.info(f"Database {DB_FILE_NAME} uploaded to S3 bucket {S3_BUCKET_NAME}.")
-    except (NoCredentialsError, PartialCredentialsError) as e:
-        logging.error(f"Credentials error during S3 upload: {e}")
-    except ClientError as e:
-        logging.error(f"Failed to upload {DB_FILE_NAME} to S3 bucket: {e}")
-    except Exception as e:
-        logging.error(f"Unexpected error during S3 upload: {e}")
-
-def download_db_from_s3():
-    """Download the SQLite database from S3."""
-    try:
-        logging.debug("Starting download of the database from S3...")
-        s3_client.download_file(S3_BUCKET_NAME, DB_FILE_NAME, DB_FILE_NAME)
-        logging.info(f"Database {DB_FILE_NAME} downloaded from S3 bucket {S3_BUCKET_NAME}.")
-    except (NoCredentialsError, PartialCredentialsError) as e:
-        logging.error(f"Credentials error during S3 download: {e}")
-    except ClientError as e:
-        logging.error(f"Failed to download {DB_FILE_NAME} from S3 bucket: {e}")
-    except Exception as e:
-        logging.error(f"Unexpected error during S3 download: {e}")
-
 def store_order(order_details):
     """Store order details in SQLite database."""
     retries = 5
@@ -233,6 +233,7 @@ def store_order(order_details):
             ist = pytz.timezone('Asia/Kolkata')
             ist_time = datetime.now(ist).strftime('%Y-%m-%d %H:%M:%S')
 
+            # Insert order details into the orders table
             c.execute("""
                 INSERT INTO orders (symbol, quantity, price, order_type, product, timestamp)
                 VALUES (?, ?, ?, ?, ?, ?)
@@ -240,7 +241,7 @@ def store_order(order_details):
                 order_details['symbol'],
                 order_details['quantity'],
                 order_details['price'],
-                order_details['transaction_type'],
+                order_details['transaction_type'],  # Ensure this matches the correct key
                 order_details['product'],
                 ist_time
             ))
@@ -307,9 +308,10 @@ if __name__ == '__main__':
         if alpha_etf_data:
             logging.debug(f"Filtered ALPHAETF data: {alpha_etf_data}")
             
+            # Get the current price from the data
             current_price = alpha_etf_data[0]['close']
             
-            order_quantity = 1
+            order_quantity = 1  # Default quantity
             
             order_details = {
                 "exchange": "NSE_EQ",
@@ -332,6 +334,7 @@ if __name__ == '__main__':
                 order_details['price'] = response['data'].get('price', current_price)  # Update with the actual price from response
                 store_order(order_details)
                 logging.info(f"Order placed successfully. Response: {response}")
+                # Upload the updated database back to S3
                 upload_db_to_s3()
             else:
                 logging.error(f"Failed to place order. Response: {response}")
