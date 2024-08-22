@@ -6,6 +6,7 @@ on:
 jobs:
   run-script:
     runs-on: ubuntu-latest  # Ensure this uses GitHub-hosted runner for Linux
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -26,10 +27,6 @@ jobs:
         run: |
           gh run download --repo ${{ github.repository }} --name access_token --dir ./token
 
-      - name: Check Artifact Directory
-        run: |
-          ls ./token
-
       - name: Set Access Token as Environment Variable
         run: |
           ACCESS_TOKEN=$(cat ./token/access_token.txt)
@@ -41,25 +38,7 @@ jobs:
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws configure set region ap-south-1
 
-      - name: Debug Imports (Check if function is recognized)
-        run: |
-          python -c "import chartink_script_test_2; print(dir(chartink_script_test_2))"
-        env:
-          YOUR_API_KEY: ${{ secrets.YOUR_API_KEY }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
-
-      - name: Validate S3 Access
-        run: |
-          python -c "from chartink_script_test_2 import validate_s3_access; validate_s3_access()"
-        env:
-          YOUR_API_KEY: ${{ secrets.YOUR_API_KEY }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
-
-      - name: Run Trading Script with S3
+      - name: Run Trading Script
         run: |
           python chartink_script_test_2.py
         env:
@@ -67,4 +46,4 @@ jobs:
           ACCESS_TOKEN: ${{ env.ACCESS_TOKEN }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+          AWS_DEFAULT_REGION: ap-south-1

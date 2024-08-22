@@ -32,6 +32,8 @@ S3_BUCKET_NAME = 'my-beest-db'
 DB_FILE_NAME = 'beest-orders.db'
 
 # Initialize the S3 client
+logging.debug(f"Using AWS region: {AWS_DEFAULT_REGION}")
+
 s3_client = boto3.client(
     's3',
     aws_access_key_id=AWS_ACCESS_KEY_ID,
@@ -39,15 +41,9 @@ s3_client = boto3.client(
     region_name=AWS_DEFAULT_REGION
 )
 
-if YOUR_API_KEY:
-    logging.debug("YOUR_API_KEY is set.")
-else:
-    logging.error("YOUR_API_KEY is not set.")
-
 def validate_s3_access():
     """Validate access to the S3 bucket."""
     try:
-        # List the contents of the bucket to validate access
         response = s3_client.list_objects_v2(Bucket=S3_BUCKET_NAME)
         if 'Contents' in response:
             logging.info(f"Successfully accessed S3 bucket {S3_BUCKET_NAME}.")
@@ -85,7 +81,7 @@ def upload_db_to_s3():
         logging.error(f"Unexpected error during S3 upload: {e}")
 
 def init_db():
-    """Initialize SQLite database and validate S3 access."""
+    """Initialize SQLite database."""
     try:
         if not os.path.exists(DB_FILE_NAME):
             logging.debug("Database file does not exist. Creating a new one.")
