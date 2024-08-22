@@ -1,10 +1,10 @@
-name: Modify S3 DB Workflow
+name: Check S3 DB Workflow
 
 on:
   workflow_dispatch:  # Allows manual triggering
 
 jobs:
-  run-modify:
+  run-check:
     runs-on: ubuntu-latest  # Use the latest Ubuntu runner
 
     steps:
@@ -27,9 +27,9 @@ jobs:
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws configure set region ap-south-1
 
-      - name: Run S3 DB Modify Script
+      - name: Run Modify S3 DB Script
         run: |
-          python modify_s3_db_script.py
+          python modify_s3_db_script-v1.py
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

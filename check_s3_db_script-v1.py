@@ -26,19 +26,6 @@ s3_client = boto3.client(
     region_name=AWS_DEFAULT_REGION
 )
 
-def validate_s3_access():
-    """Validate access to the S3 bucket."""
-    try:
-        response = s3_client.list_objects_v2(Bucket=S3_BUCKET_NAME)
-        if 'Contents' in response:
-            logging.info(f"Successfully accessed S3 bucket {S3_BUCKET_NAME}.")
-        else:
-            logging.warning(f"S3 bucket {S3_BUCKET_NAME} is empty or not accessible.")
-    except ClientError as e:
-        logging.error(f"Failed to access S3 bucket {S3_BUCKET_NAME}: {e}")
-    except Exception as e:
-        logging.error(f"Unexpected error occurred while accessing S3 bucket: {e}")
-
 def download_db_from_s3():
     """Download the SQLite database from S3."""
     try:
@@ -53,23 +40,17 @@ def download_db_from_s3():
         logging.error(f"Unexpected error during S3 download: {e}")
 
 def modify_db():
-    """Modify existing data and insert new data into the SQLite database."""
+    """Modify the SQLite database."""
     try:
         conn = sqlite3.connect(DB_FILE_NAME)
         c = conn.cursor()
-
-        # Update an existing record in the test_table
-        c.execute("UPDATE test_table SET test_column = 'Modified Data' WHERE id = 1")
-        logging.info("Modified existing record in test_table.")
-
-        # Insert a new record into the test_table
-        c.execute("INSERT INTO test_table (test_column) VALUES ('New Data')")
-        logging.info("Inserted new record into test_table.")
-
+        # Insert new test data
+        c.execute("INSERT INTO test_table (test_column) VALUES ('Modified Test Data')")
         conn.commit()
         conn.close()
+        logging.info("New test data inserted successfully.")
     except sqlite3.Error as e:
-        logging.error(f"SQLite error occurred during modification: {e}")
+        logging.error(f"SQLite error occurred while modifying data: {e}")
 
 def upload_db_to_s3():
     """Upload the SQLite database to S3."""
@@ -85,14 +66,11 @@ def upload_db_to_s3():
         logging.error(f"Unexpected error during S3 upload: {e}")
 
 if __name__ == '__main__':
-    # Validate S3 access before starting
-    validate_s3_access()
-
-    # Download the database from S3 before starting
+    # Download the database from S3
     download_db_from_s3()
 
-    # Modify the database (update and insert records)
+    # Modify the database
     modify_db()
 
-    # Upload the updated database back to S3
+    # Upload the modified database back to S3
     upload_db_to_s3()
