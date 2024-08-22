@@ -203,10 +203,11 @@ def check_order_status(order_id, retries=20, delay=10):
                     status = order.get('status')
                     logging.debug(f"Found order {order_id} with status: {status}")
                     if status != 'pending':
+                        logging.info(f"Order {order_id} status is {status}.")
                         return order
                     break
             else:
-                logging.info(f"Order {order_id} is not in the order book or still pending. Retrying...")
+                logging.info(f"Order {order_id} is still pending. Retrying...")
 
         except requests.exceptions.HTTPError as http_err:
             logging.error(f"HTTP error occurred while checking order status: {http_err}")
