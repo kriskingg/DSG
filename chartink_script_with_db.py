@@ -47,7 +47,6 @@ else:
 def validate_s3_access():
     """Validate access to the S3 bucket."""
     try:
-        # List the contents of the bucket to validate access
         response = s3_client.list_objects_v2(Bucket=S3_BUCKET_NAME)
         if 'Contents' in response:
             logging.info(f"Successfully accessed S3 bucket {S3_BUCKET_NAME}.")
@@ -173,12 +172,10 @@ def trigger_order_on_rupeezy(order_details, retries=10):
 def init_db():
     """Initialize SQLite database and validate S3 access."""
     try:
-        # Validate S3 access before proceeding
         validate_s3_access()
 
         conn = sqlite3.connect(DB_FILE_NAME)
         c = conn.cursor()
-        # Create orders table if it does not exist
         c.execute('''CREATE TABLE IF NOT EXISTS orders
                      (id INTEGER PRIMARY KEY AUTOINCREMENT,
                       symbol TEXT,
@@ -232,7 +229,6 @@ def store_order(order_details):
             ist = pytz.timezone('Asia/Kolkata')
             ist_time = datetime.now(ist).strftime('%Y-%m-%d %H:%M:%S')
 
-            # Insert order details into the orders table
             c.execute("""
                 INSERT INTO orders (symbol, quantity, price, order_type, product, timestamp)
                 VALUES (?, ?, ?, ?, ?, ?)
@@ -240,7 +236,7 @@ def store_order(order_details):
                 order_details['symbol'],
                 order_details['quantity'],
                 order_details['price'],
-                order_details['transaction_type'],  # Ensure this matches the correct key
+                order_details['transaction_type'],
                 order_details['product'],
                 ist_time
             ))
@@ -307,10 +303,9 @@ if __name__ == '__main__':
         if alpha_etf_data:
             logging.debug(f"Filtered ALPHAETF data: {alpha_etf_data}")
             
-            # Get the current price from the data
             current_price = alpha_etf_data[0]['close']
             
-            order_quantity = 1  # Default quantity
+            order_quantity = 1
             
             order_details = {
                 "exchange": "NSE_EQ",
@@ -333,7 +328,6 @@ if __name__ == '__main__':
                 order_details['price'] = response['data'].get('price', current_price)  # Update with the actual price from response
                 store_order(order_details)
                 logging.info(f"Order placed successfully. Response: {response}")
-                # Upload the updated database back to S3
                 upload_db_to_s3()
             else:
                 logging.error(f"Failed to place order. Response: {response}")
