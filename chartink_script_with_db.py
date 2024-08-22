@@ -176,33 +176,42 @@ def fetch_latest_ltp(symbol_token):
         logging.error(f"Other error occurred while fetching LTP: {err}")
     return None
 
-def get_order_status(order_id):
-    """Fetch the status of the order using its ID."""
+def check_order_status(order_id, retries=20, delay=10):
+    """Check the status of an order until it is no longer pending."""
+    api_url = f"https://vortex.trade.rupeezy.in/orders/status/{order_id}"
     access_token = get_access_token()
     if not access_token:
         logging.error("Access token is not available.")
         return None
-    
+
     headers = {
-        "Authorization": f"Bearer {access_token}",
+        "Authorization": f"Bearer {access_token}"
     }
-    
-    url = f"https://vortex.trade.rupeezy.in/orders/{order_id}"
-    
-    try:
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        order_status = response.json()
-        logging.debug(f"Order status fetched successfully: {order_status}")
-        return order_status
-    except requests.exceptions.HTTPError as http_err:
-        logging.error(f"HTTP error occurred while fetching order status: {http_err}")
-    except Exception as err:
-        logging.error(f"Other error occurred while fetching order status: {err}")
+
+    for attempt in range(retries):
+        try:
+            response = requests.get(api_url, headers=headers)
+            response.raise_for_status()
+            response_json = response.json()
+            logging.debug("Order status response: %s", response_json)
+
+            status = response_json.get('status')
+            if status != 'pending':
+                return response_json
+            else:
+                logging.info(f"Order {order_id} is still pending. Waiting for {delay} seconds before retrying...")
+        except requests.exceptions.HTTPError as http_err:
+            logging.error(f"HTTP error occurred while checking order status: {http_err}")
+        except Exception as err:
+            logging.error(f"Other error occurred while checking order status: {err}")
+
+        sleep(delay)
+
+    logging.error(f"Order {order_id} did not complete after {retries} attempts.")
     return None
 
-def trigger_order_on_rupeezy(order_details, retries=10, check_interval=10):
-    """Trigger an order on Rupeezy, check its status, and update the database only if it is executed."""
+def trigger_order_on_rupeezy(order_details, retries=10):
+    """Trigger an order on Rupeezy with retry logic."""
     api_url = "https://vortex.trade.rupeezy.in/orders/regular"
     access_token = get_access_token()
     if not access_token:
@@ -215,41 +224,28 @@ def trigger_order_on_rupeezy(order_details, retries=10, check_interval=10):
     }
 
     for attempt in range(retries):
-        try:
-            ltp = fetch_latest_ltp(order_details['token'])
-            if ltp and ltp <= order_details['price']:
-                order_details['price'] = ltp
-                logging.debug(f"Order attempt {attempt + 1} with LTP: {ltp}")
+        ltp = fetch_latest_ltp(order_details['token'])
+        if ltp and ltp <= order_details['price']:
+            order_details['price'] = ltp
+            logging.debug(f"Order attempt {attempt + 1} with LTP: {ltp}")
 
+            try:
                 response = requests.post(api_url, json=order_details, headers=headers)
                 response.raise_for_status()
                 response_json = response.json()
                 logging.debug("Order response: %s", response_json)
 
                 if response_json.get('status') == 'success':
-                    order_id = response_json['data']['orderId']
-                    logging.info(f"Order placed successfully, order ID: {order_id}")
-                    
-                    # Wait and check the order status until it's executed or until retries are exhausted
-                    for status_check_attempt in range(retries):
-                        order_status = get_order_status(order_id)
-                        if order_status and order_status['data']['status'] == 'executed':
-                            logging.info(f"Order {order_id} executed successfully.")
-                            return order_status
-                        else:
-                            logging.info(f"Order {order_id} not yet executed. Waiting...")
-                            sleep(check_interval)  # Wait before retrying
-                    logging.error(f"Order {order_id} was not executed after {retries} attempts.")
-                    break  # Exit if the order was not executed after all attempts
+                    return response_json
                 else:
                     logging.error(f"Order failed on attempt {attempt + 1}: {response_json}")
-            else:
-                logging.info(f"LTP {ltp} is higher than order price. Retrying...")
-            sleep(check_interval)
-        except requests.exceptions.HTTPError as http_err:
-            logging.error(f"HTTP error occurred during order attempt {attempt + 1}: {http_err}")
-        except Exception as err:
-            logging.error(f"Other error occurred during order attempt {attempt + 1}: {err}")
+            except requests.exceptions.HTTPError as http_err:
+                logging.error(f"HTTP error occurred during order attempt {attempt + 1}: {http_err}")
+            except Exception as err:
+                logging.error(f"Other error occurred during order attempt {attempt + 1}: {err}")
+        else:
+            logging.info(f"LTP {ltp} is higher than order price. Retrying...")
+        sleep(2)  # Short delay before retrying
 
     logging.error("All retries for order placement failed.")
     return None
@@ -364,14 +360,19 @@ if __name__ == '__main__':
             }
             
             response = trigger_order_on_rupeezy(order_details)
-            if response and response['data']['status'] == 'executed':
-                order_details['price'] = response['data'].get('price', current_price)  # Update with the actual price from response
-                store_order(order_details)
-                logging.info(f"Order placed and executed successfully. Response: {response}")
-                # Upload the updated database back to S3
-                upload_db_to_s3()
+            if response and response.get('status') == 'success':
+                order_id = response['data'].get('orderId')
+                order_status_response = check_order_status(order_id)
+                if order_status_response and order_status_response.get('status') != 'pending':
+                    order_details['price'] = response['data'].get('price', current_price)  # Update with the actual price from response
+                    store_order(order_details)
+                    logging.info(f"Order executed successfully. Response: {response}")
+                    # Upload the updated database back to S3
+                    upload_db_to_s3()
+                else:
+                    logging.error(f"Order {order_id} did not execute successfully. Final status: {order_status_response}")
             else:
-                logging.error(f"Failed to place or execute order. Response: {response}")
+                logging.error(f"Failed to place order. Response: {response}")
         else:
             logging.info("No ALPHAETF data found. No action taken.")
     else:
