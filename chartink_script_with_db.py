@@ -47,6 +47,7 @@ else:
 def validate_s3_access():
     """Validate access to the S3 bucket."""
     try:
+        # List the contents of the bucket to validate access
         response = s3_client.list_objects_v2(Bucket=S3_BUCKET_NAME)
         if 'Contents' in response:
             logging.info(f"Successfully accessed S3 bucket {S3_BUCKET_NAME}.")
@@ -56,6 +57,9 @@ def validate_s3_access():
         logging.error(f"Failed to access S3 bucket {S3_BUCKET_NAME}: {e}")
     except Exception as e:
         logging.error(f"Unexpected error occurred while accessing S3 bucket: {e}")
+
+# (Rest of your code remains the same)
+
 
 def get_access_token():
     """Read access token from the file."""
