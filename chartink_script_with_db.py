@@ -197,6 +197,7 @@ def check_order_status(order_id, retries=20, delay=10):
 
             status = response_json.get('status')
             if status != 'pending':
+                logging.info(f"Order {order_id} status: {status}. No longer pending.")
                 return response_json
             else:
                 logging.info(f"Order {order_id} is still pending. Waiting for {delay} seconds before retrying...")
@@ -335,7 +336,7 @@ if __name__ == '__main__':
     if data:
         alpha_etf_data = [item for item in data['data'] if item['nsecode'] == 'ALPHAETF']
         
-        if alpha_etf_data:
+        if (alpha_etf_data):
             logging.debug(f"Filtered ALPHAETF data: {alpha_etf_data}")
             
             # Get the current price from the data
