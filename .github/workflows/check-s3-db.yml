@@ -21,11 +21,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install boto3
 
+      - name: Validate AWS Region
+        run: |
+          echo "AWS Region: ${{ secrets.AWS_DEFAULT_REGION }}"
+          if [ -z "${{ secrets.AWS_DEFAULT_REGION }}" ]; then
+            echo "Error: AWS_DEFAULT_REGION is not set."
+            exit 1
+          fi
+
       - name: Configure AWS Credentials
         run: |
           aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws configure set region ap-south-1
+          aws configure set region ${{ secrets.AWS_DEFAULT_REGION }}
 
       - name: Run S3 DB Check Script
         run: |

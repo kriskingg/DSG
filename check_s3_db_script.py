@@ -17,6 +17,8 @@ S3_BUCKET_NAME = 'my-beest-db'
 DB_FILE_NAME = 'orders_test.db'
 
 # Initialize the S3 client
+logging.debug(f"Using AWS region: {AWS_DEFAULT_REGION}")
+
 s3_client = boto3.client(
     's3',
     aws_access_key_id=AWS_ACCESS_KEY_ID,
