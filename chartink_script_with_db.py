@@ -177,30 +177,37 @@ def fetch_latest_ltp(symbol_token):
     return None
 
 def check_order_status(order_id, retries=20, delay=10):
-    """Check the status of an order until it is no longer pending."""
-    api_url = f"https://vortex.trade.rupeezy.in/orders/status/{order_id}"
+    """Check the status of an order by fetching the order book until it is no longer pending."""
+    api_url = "https://vortex.trade.rupeezy.in/orders"
     access_token = get_access_token()
     if not access_token:
         logging.error("Access token is not available.")
         return None
 
     headers = {
-        "Authorization": f"Bearer {access_token}"
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
     }
 
     for attempt in range(retries):
         try:
-            response = requests.get(api_url, headers=headers)
+            response = requests.get(api_url, headers=headers, params={"limit": 10, "offset": 1})
             response.raise_for_status()
             response_json = response.json()
-            logging.debug("Order status response: %s", response_json)
+            logging.debug("Order book response: %s", response_json)
 
-            status = response_json.get('status')
-            if status != 'pending':
-                logging.info(f"Order {order_id} status: {status}. No longer pending.")
-                return response_json
+            # Look for the specific order by order_id in the order book
+            orders = response_json.get('data', [])
+            for order in orders:
+                if order.get('orderId') == order_id:
+                    status = order.get('status')
+                    logging.debug(f"Found order {order_id} with status: {status}")
+                    if status != 'pending':
+                        return order
+                    break
             else:
-                logging.info(f"Order {order_id} is still pending. Waiting for {delay} seconds before retrying...")
+                logging.info(f"Order {order_id} is not in the order book or still pending. Retrying...")
+
         except requests.exceptions.HTTPError as http_err:
             logging.error(f"HTTP error occurred while checking order status: {http_err}")
         except Exception as err:
@@ -336,7 +343,7 @@ if __name__ == '__main__':
     if data:
         alpha_etf_data = [item for item in data['data'] if item['nsecode'] == 'ALPHAETF']
         
-        if (alpha_etf_data):
+        if alpha_etf_data:
             logging.debug(f"Filtered ALPHAETF data: {alpha_etf_data}")
             
             # Get the current price from the data
@@ -365,9 +372,9 @@ if __name__ == '__main__':
                 order_id = response['data'].get('orderId')
                 order_status_response = check_order_status(order_id)
                 if order_status_response and order_status_response.get('status') != 'pending':
-                    order_details['price'] = response['data'].get('price', current_price)  # Update with the actual price from response
+                    order_details['price'] = order_status_response.get('price', current_price)  # Update with the actual price from response
                     store_order(order_details)
-                    logging.info(f"Order executed successfully. Response: {response}")
+                    logging.info(f"Order executed successfully. Response: {order_status_response}")
                     # Upload the updated database back to S3
                     upload_db_to_s3()
                 else:
