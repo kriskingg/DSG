@@ -1,39 +1,26 @@
 import os
 import requests
-from bs4 import BeautifulSoup
+import sqlite3
 import logging
 from time import sleep
 from datetime import datetime
 import pytz
-import sqlite3
 import boto3
 from botocore.exceptions import NoCredentialsError, PartialCredentialsError, ClientError
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
 
 # Setup basic logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-# Constants for Chartink
-Charting_Link = "https://chartink.com/screener/"
-Charting_url = 'https://chartink.com/screener/process'
-condition = "( {166311} ( latest rsi(65) < latest ema(rsi(65),35) or weekly rsi(65) < weekly ema(rsi(65),35) ) )"
+# Constants
+S3_BUCKET_NAME = 'my-beest-db'
+DB_FILE_NAME = 'beest-orders.db'
 
-# Load API Key and AWS credentials from environment variables
-YOUR_API_KEY = os.getenv('YOUR_API_KEY')
+# AWS credentials
 AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 AWS_DEFAULT_REGION = os.getenv('AWS_DEFAULT_REGION', 'ap-south-1')
 
-# S3 Bucket configuration
-S3_BUCKET_NAME = 'my-beest-db'
-DB_FILE_NAME = 'beest-orders.db'
-
 # Initialize the S3 client
-logging.debug(f"Using AWS region: {AWS_DEFAULT_REGION}")
-
 s3_client = boto3.client(
     's3',
     aws_access_key_id=AWS_ACCESS_KEY_ID,
@@ -54,18 +41,52 @@ def validate_s3_access():
     except Exception as e:
         logging.error(f"Unexpected error occurred while accessing S3 bucket: {e}")
 
-def download_db_from_s3():
-    """Download the SQLite database from S3."""
+def init_db():
+    """Initialize SQLite database and validate S3 access."""
     try:
-        logging.debug("Starting download of the database from S3...")
-        s3_client.download_file(S3_BUCKET_NAME, DB_FILE_NAME, DB_FILE_NAME)
-        logging.info(f"Database {DB_FILE_NAME} downloaded from S3 bucket {S3_BUCKET_NAME}.")
-    except (NoCredentialsError, PartialCredentialsError) as e:
-        logging.error(f"Credentials error during S3 download: {e}")
-    except ClientError as e:
-        logging.error(f"Failed to download {DB_FILE_NAME} from S3 bucket: {e}")
-    except Exception as e:
-        logging.error(f"Unexpected error during S3 download: {e}")
+        validate_s3_access()
+        conn = sqlite3.connect(DB_FILE_NAME)
+        c = conn.cursor()
+        c.execute('''CREATE TABLE IF NOT EXISTS orders
+                     (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      symbol TEXT,
+                      quantity INTEGER,
+                      price REAL,
+                      order_type TEXT,
+                      product TEXT,
+                      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                      status TEXT)''')
+        conn.commit()
+        conn.close()
+        logging.debug("Database initialized successfully.")
+    except sqlite3.Error as e:
+        logging.error(f"SQLite error occurred during initialization: {e}")
+
+def store_order(order_details, status):
+    """Store order details in SQLite database."""
+    try:
+        conn = sqlite3.connect(DB_FILE_NAME)
+        c = conn.cursor()
+        ist = pytz.timezone('Asia/Kolkata')
+        ist_time = datetime.now(ist).strftime('%Y-%m-%d %H:%M:%S')
+
+        c.execute("""
+            INSERT INTO orders (symbol, quantity, price, order_type, product, timestamp, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            order_details['symbol'],
+            order_details['quantity'],
+            order_details['price'],
+            order_details['transaction_type'],  # Make sure this matches the key in your order details
+            order_details['product'],
+            ist_time,
+            status
+        ))
+        conn.commit()
+        conn.close()
+        logging.debug("Order stored successfully.")
+    except sqlite3.Error as e:
+        logging.error(f"SQLite error occurred while storing order: {e}")
 
 def upload_db_to_s3():
     """Upload the SQLite database to S3."""
@@ -80,81 +101,23 @@ def upload_db_to_s3():
     except Exception as e:
         logging.error(f"Unexpected error during S3 upload: {e}")
 
-def init_db():
-    """Initialize SQLite database."""
+def download_db_from_s3():
+    """Download the SQLite database from S3."""
     try:
-        if not os.path.exists(DB_FILE_NAME):
-            logging.debug("Database file does not exist. Creating a new one.")
-            conn = sqlite3.connect(DB_FILE_NAME)
-            c = conn.cursor()
-            # Create orders table if it does not exist
-            c.execute('''CREATE TABLE IF NOT EXISTS orders
-                         (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                          symbol TEXT,
-                          quantity INTEGER,
-                          price REAL,
-                          order_type TEXT,
-                          product TEXT,
-                          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-            conn.commit()
-            conn.close()
-            logging.debug("Database initialized successfully.")
-        else:
-            logging.debug("Database file already exists.")
-    except sqlite3.Error as e:
-        logging.error(f"SQLite error occurred during initialization: {e}")
-
-def get_access_token():
-    """Read access token from the file."""
-    try:
-        with open('./token/access_token.txt', 'r') as file:
-            token = file.read().strip()
-            if token:
-                logging.debug(f"Access token retrieved: '{token}'")
-            else:
-                logging.error("Access token is empty.")
-            return token
-    except FileNotFoundError:
-        logging.error("access_token.txt file not found.")
-        return None
+        logging.debug("Starting download of the database from S3...")
+        s3_client.download_file(S3_BUCKET_NAME, DB_FILE_NAME, DB_FILE_NAME)
+        logging.info(f"Database {DB_FILE_NAME} downloaded from S3 bucket {S3_BUCKET_NAME}.")
+    except (NoCredentialsError, PartialCredentialsError) as e:
+        logging.error(f"Credentials error during S3 download: {e}")
+    except ClientError as e:
+        logging.error(f"Failed to download {DB_FILE_NAME} from S3 bucket: {e}")
     except Exception as e:
-        logging.error(f"Error reading access token: {e}")
-        return None
-
-def fetch_chartink_data(condition):
-    """Fetch data from Chartink based on the given condition."""
-    retries = 3
-    for attempt in range(retries):
-        try:
-            with requests.Session() as s:
-                s.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
-                logging.debug("Headers: {}".format(s.headers))
-                r = s.get(Charting_Link)
-                logging.debug("GET request to Charting_Link status code: {}".format(r.status_code))
-                soup = BeautifulSoup(r.text, "html.parser")
-                csrf_token = soup.select_one("[name='csrf-token']")['content']
-                s.headers.update({'x-csrf-token': csrf_token})
-                logging.debug("CSRF Token: {}".format(csrf_token))
-                logging.debug("Scan Condition: {}".format(condition))
-                response = s.post(Charting_url, data={'scan_clause': condition})
-                logging.debug("POST request to Charting_url status code: {}".format(response.status_code))
-                logging.debug("Request Data: {}".format({'scan_clause': condition}))
-                response_json = response.json()
-                logging.debug("Response JSON: {}".format(response_json))
-                if response.status_code == 200:
-                    return response_json
-                else:
-                    logging.error("Failed to fetch data with status code: {}".format(response.status_code))
-        except Exception as e:
-            logging.error("Exception during data fetch: {}".format(str(e)))
-        sleep(10)  # wait before retrying
-    logging.error("All retries failed")
-    return None
+        logging.error(f"Unexpected error during S3 download: {e}")
 
 def fetch_latest_ltp(symbol_token):
     """Fetch the latest LTP for the given symbol token."""
     api_url = f"https://vortex.trade.rupeezy.in/data/quote?q=NSE_EQ-{symbol_token}&mode=full"
-    access_token = get_access_token()
+    access_token = os.getenv('ACCESS_TOKEN')
     if not access_token:
         logging.error("Access token is not available.")
         return None
@@ -179,7 +142,7 @@ def fetch_latest_ltp(symbol_token):
 def trigger_order_on_rupeezy(order_details, retries=10):
     """Trigger an order on Rupeezy with retry logic."""
     api_url = "https://vortex.trade.rupeezy.in/orders/regular"
-    access_token = get_access_token()
+    access_token = os.getenv('ACCESS_TOKEN')
     if not access_token:
         logging.error("Access token is not available.")
         return None
@@ -215,75 +178,6 @@ def trigger_order_on_rupeezy(order_details, retries=10):
 
     logging.error("All retries for order placement failed.")
     return None
-
-def store_order(order_details):
-    """Store order details in SQLite database."""
-    retries = 5
-    while retries > 0:
-        try:
-            conn = sqlite3.connect(DB_FILE_NAME)
-            c = conn.cursor()
-            logging.debug(f"Storing order: {order_details}")
-            
-            # Convert current time to IST
-            ist = pytz.timezone('Asia/Kolkata')
-            ist_time = datetime.now(ist).strftime('%Y-%m-%d %H:%M:%S')
-
-            # Insert order details into the orders table
-            c.execute("""
-                INSERT INTO orders (symbol, quantity, price, order_type, product, timestamp)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (
-                order_details['symbol'],
-                order_details['quantity'],
-                order_details['price'],
-                order_details['transaction_type'],  # Ensure this matches the correct key
-                order_details['product'],
-                ist_time
-            ))
-            conn.commit()
-            conn.close()
-            logging.debug("Order stored successfully.")
-            break
-        except sqlite3.OperationalError as e:
-            if 'database is locked' in str(e):
-                retries -= 1
-                sleep(1)
-                logging.warning(f"Database is locked, retrying {retries} more times")
-            else:
-                logging.error(f"SQLite error occurred: {e}")
-                break
-        except Exception as e:
-            logging.error(f"An error occurred: {e}")
-            break
-
-def get_first_day_price():
-    """Get the first day order price from the database."""
-    try:
-        conn = sqlite3.connect(DB_FILE_NAME)
-        c = conn.cursor()
-        c.execute("SELECT price FROM orders WHERE symbol = 'ALPHAETF' ORDER BY timestamp ASC LIMIT 1")
-        result = c.fetchone()
-        conn.close()
-        if result:
-            return result[0]
-    except sqlite3.Error as e:
-        logging.error(f"SQLite error occurred: {e}")
-    return None
-
-def get_last_order_quantity():
-    """Get the quantity of the last order placed for ALPHAETF."""
-    try:
-        conn = sqlite3.connect(DB_FILE_NAME)
-        c = conn.cursor()
-        c.execute("SELECT quantity FROM orders WHERE symbol = 'ALPHAETF' ORDER BY timestamp DESC LIMIT 1")
-        result = c.fetchone()
-        conn.close()
-        if result:
-            return result[0]
-    except sqlite3.Error as e:
-        logging.error(f"SQLite error occurred: {e}")
-    return 1
 
 if __name__ == '__main__':
     # Validate S3 access before starting
@@ -328,11 +222,12 @@ if __name__ == '__main__':
             response = trigger_order_on_rupeezy(order_details)
             if response and response.get('status') == 'success':
                 order_details['price'] = response['data'].get('price', current_price)  # Update with the actual price from response
-                store_order(order_details)
+                store_order(order_details, status="SUCCESS")
                 logging.info(f"Order placed successfully. Response: {response}")
                 # Upload the updated database back to S3
                 upload_db_to_s3()
             else:
+                store_order(order_details, status="FAILED")
                 logging.error(f"Failed to place order. Response: {response}")
         else:
             logging.info("No ALPHAETF data found. No action taken.")
