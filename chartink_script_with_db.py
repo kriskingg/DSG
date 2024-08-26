@@ -11,7 +11,7 @@ load_dotenv()
 # Setup basic logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-# Constants for Chartink
+# Constants for Chartink and Rupeezy
 Charting_Link = "https://chartink.com/screener/"
 Charting_url = 'https://chartink.com/screener/process'
 condition = "( {166311} ( latest rsi(65) < latest ema(rsi(65),35) or weekly rsi(65) < weekly ema(rsi(65),35) ) )"
@@ -66,9 +66,9 @@ def fetch_chartink_data(condition):
     logging.error("All retries failed")
     return None
 
-def check_order_status(order_id, retries=20, delay=10):
-    """Check the status of an order by fetching the order book until it is no longer pending."""
-    api_url = "https://vortex.trade.rupeezy.in/orders"
+def get_ltp_from_rupeezy(token):
+    """Fetch the LTP for a specific token from Rupeezy."""
+    api_url = f"https://vortex.trade.rupeezy.in/data/quote?q=NSE_EQ-{token}&mode=full"
     access_token = get_access_token()
     if not access_token:
         logging.error("Access token is not available.")
@@ -79,34 +79,18 @@ def check_order_status(order_id, retries=20, delay=10):
         "Content-Type": "application/json"
     }
 
-    for attempt in range(retries):
-        try:
-            response = requests.get(api_url, headers=headers, params={"limit": 10, "offset": 1})
-            response.raise_for_status()
-            response_json = response.json()
-            logging.debug("Order book response: %s", response_json)
+    try:
+        response = requests.get(api_url, headers=headers)
+        response.raise_for_status()
+        response_json = response.json()
+        ltp = response_json.get('data', {}).get('ltp')
+        logging.debug(f"LTP for token {token} from Rupeezy: {ltp}")
+        return ltp
+    except requests.exceptions.HTTPError as http_err:
+        logging.error(f"HTTP error occurred while fetching LTP: {http_err}")
+    except Exception as err:
+        logging.error(f"Other error occurred while fetching LTP: {err}")
 
-            # Look for the specific order by order_id in the order book
-            orders = response_json.get('data', [])
-            for order in orders:
-                if order.get('orderId') == order_id:
-                    status = order.get('status')
-                    logging.debug(f"Found order {order_id} with status: {status}")
-                    if status != 'pending':
-                        logging.info(f"Order {order_id} status is {status}.")
-                        return order
-                    break
-            else:
-                logging.info(f"Order {order_id} is still pending. Retrying...")
-
-        except requests.exceptions.HTTPError as http_err:
-            logging.error(f"HTTP error occurred while checking order status: {http_err}")
-        except Exception as err:
-            logging.error(f"Other error occurred while checking order status: {err}")
-
-        sleep(delay)
-
-    logging.error(f"Order {order_id} did not complete after {retries} attempts.")
     return None
 
 def trigger_order_on_rupeezy(order_details, retries=10):
@@ -155,15 +139,20 @@ if __name__ == '__main__':
         if alpha_data:
             logging.debug(f"Filtered ALPHA data: {alpha_data}")
             
-            # Get the current price from the Chartink data directly
-            current_price = alpha_data[0]['close']
-            logging.debug(f"LTP from Chartink data for ALPHA: {current_price}")
+            # Get the token for ALPHA
+            token = 7412  # Use the correct token for ALPHA
+            
+            # Get the current price from Rupeezy directly
+            current_price = get_ltp_from_rupeezy(token)
+            if not current_price:
+                logging.error("Failed to fetch LTP from Rupeezy. Exiting.")
+                exit(1)
             
             order_quantity = 1  # Default quantity
             
             order_details = {
                 "exchange": "NSE_EQ",
-                "token": 7412,  # Token number for ALPHA.
+                "token": token,  # Token number for ALPHA.
                 "symbol": "ALPHA",
                 "transaction_type": "BUY",
                 "product": "DELIVERY",
@@ -179,9 +168,9 @@ if __name__ == '__main__':
             
             response = trigger_order_on_rupeezy(order_details)
             if response and response.get('status') == 'success':
-                order_id = response['data'].get('orderId')
+                order_id = response['data'].get('order_id')
                 order_status_response = check_order_status(order_id)
-                if order_status_response and order_status_response.get('status') != 'pending':
+                if order_status_response and order_status_response.get('status') != 'PENDING':
                     order_details['price'] = order_status_response.get('price', current_price)  # Update with the actual price from response
                     logging.info(f"Order executed successfully. Response: {order_status_response}")
                 else:
