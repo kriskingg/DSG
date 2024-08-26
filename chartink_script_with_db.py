@@ -179,20 +179,20 @@ if __name__ == '__main__':
     data = fetch_chartink_data(condition)
 
     if data:
-        niftybees_data = [item for item in data['data'] if item['nsecode'] == 'NIFTYBEES']
+        alpha_data = [item for item in data['data'] if item['nsecode'] == 'ALPHA']
         
-        if niftybees_data:
-            logging.debug(f"Filtered NIFTYBEES data: {niftybees_data}")
+        if alpha_data:
+            logging.debug(f"Filtered ALPHA data: {alpha_data}")
             
             # Get the current price from the data
-            current_price = niftybees_data[0]['close']
+            current_price = alpha_data[0]['close']
             
             order_quantity = 1  # Default quantity
             
             order_details = {
                 "exchange": "NSE_EQ",
-                "token": 10576,  # Token number for NIFTYBEES.
-                "symbol": "NIFTYBEES",
+                "token": 7412,  # Token number for ALPHA.
+                "symbol": "ALPHA",
                 "transaction_type": "BUY",
                 "product": "DELIVERY",
                 "variety": "RL",
@@ -218,6 +218,6 @@ if __name__ == '__main__':
             else:
                 logging.error(f"Failed to place order. Response: {response}")
         else:
-            logging.info("No NIFTYBEES data found. No action taken.")
+            logging.info("No ALPHA data found. No action taken.")
     else:
         logging.error("Failed to fetch data from Chartink.")
