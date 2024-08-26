@@ -40,7 +40,7 @@ jobs:
 
       - name: Run Trading Script
         run: |
-          python chartink_script_test_2.py
+          python chartink_script_with_db.py
         env:
           YOUR_API_KEY: ${{ secrets.YOUR_API_KEY }}
           ACCESS_TOKEN: ${{ env.ACCESS_TOKEN }}
