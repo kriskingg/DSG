@@ -1,9 +1,11 @@
 import os
+import sqlite3
+import boto3
+import logging
+from dotenv import load_dotenv
+from time import sleep
 import requests
 from bs4 import BeautifulSoup
-import logging
-from time import sleep
-from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
@@ -11,13 +13,67 @@ load_dotenv()
 # Setup basic logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-# Constants for Chartink
+# Constants
+DB_FILE = "beest-orders.db"
 Charting_Link = "https://chartink.com/screener/"
 Charting_url = 'https://chartink.com/screener/process'
 condition = "( {166311} ( latest rsi(65) < latest ema(rsi(65),35) or weekly rsi(65) < weekly ema(rsi(65),35) ) )"
-
-# Load API Key from environment variables
 YOUR_API_KEY = os.getenv('YOUR_API_KEY')
+
+def create_connection(db_file):
+    """Create a database connection to SQLite database."""
+    conn = None
+    try:
+        conn = sqlite3.connect(db_file)
+        logging.info(f"Connected to SQLite database: {db_file}")
+    except sqlite3.Error as e:
+        logging.error(f"SQLite connection error: {e}")
+    return conn
+
+def create_table(conn):
+    """Create orders table if it does not exist."""
+    create_table_sql = """
+    CREATE TABLE IF NOT EXISTS orders (
+        id INTEGER PRIMARY KEY,
+        symbol TEXT NOT NULL,
+        quantity INTEGER NOT NULL,
+        price REAL NOT NULL,
+        transaction_type TEXT NOT NULL,
+        product TEXT NOT NULL,
+        ltp REAL NOT NULL,
+        executed_at TEXT NOT NULL
+    );
+    """
+    try:
+        cursor = conn.cursor()
+        cursor.execute(create_table_sql)
+        conn.commit()
+        logging.info("Orders table created or already exists.")
+    except sqlite3.Error as e:
+        logging.error(f"SQLite table creation error: {e}")
+
+def insert_order(conn, order):
+    """Insert a new order into the orders table."""
+    insert_order_sql = """
+    INSERT INTO orders(symbol, quantity, price, transaction_type, product, ltp, executed_at)
+    VALUES(?, ?, ?, ?, ?, ?, datetime('now'));
+    """
+    try:
+        cursor = conn.cursor()
+        cursor.execute(insert_order_sql, order)
+        conn.commit()
+        logging.info("Order inserted into the orders table.")
+    except sqlite3.Error as e:
+        logging.error(f"SQLite insertion error: {e}")
+
+def upload_to_s3(db_file, bucket_name):
+    """Upload the database file to S3."""
+    s3_client = boto3.client('s3')
+    try:
+        s3_client.upload_file(db_file, bucket_name, db_file)
+        logging.info(f"Database {db_file} uploaded to S3 bucket {bucket_name}.")
+    except Exception as e:
+        logging.error(f"Failed to upload {db_file} to S3: {e}")
 
 def get_access_token():
     """Read access token from the file."""
@@ -67,7 +123,7 @@ def fetch_chartink_data(condition):
     return None
 
 def fetch_ltp_from_rupeezy(token):
-    """Fetch LTP from Rupeezy for the given token."""
+    """Fetch the LTP from Rupeezy."""
     api_url = f"https://vortex.trade.rupeezy.in/data/quote?q=NSE_EQ-{token}&mode=full"
     access_token = get_access_token()
     if not access_token:
@@ -83,23 +139,18 @@ def fetch_ltp_from_rupeezy(token):
         response = requests.get(api_url, headers=headers)
         response.raise_for_status()
         response_json = response.json()
-        logging.debug("Rupeezy LTP response: %s", response_json)
+        logging.debug(f"Rupeezy LTP response: {response_json}")
 
-        # Try different keys and approaches to find the LTP
-        ltp_1 = response_json.get('data', {}).get(f'NSE_EQ-{token}', {}).get('last_trade_price')
-        ltp_2 = response_json.get('data', {}).get(f'NSE_EQ-{token}', {}).get('close_price')
-        ltp_3 = response_json.get('data', {}).get(f'NSE_EQ-{token}', {}).get('depth', {}).get('sell', [])[0].get('price') if response_json.get('data', {}).get(f'NSE_EQ-{token}', {}).get('depth', {}).get('sell') else None
-        
+        ltp_data = response_json.get('data', {}).get(f'NSE_EQ-{token}', {})
+        ltp_1 = ltp_data.get('last_trade_price')
+        ltp_2 = ltp_data.get('close_price')
+        ltp_3 = ltp_1 if ltp_1 else ltp_2
         logging.debug(f"LTP Possibilities: ltp_1={ltp_1}, ltp_2={ltp_2}, ltp_3={ltp_3}")
-        
-        # Return the first non-None LTP found
-        return ltp_1 or ltp_2 or ltp_3
-
+        return ltp_3
     except requests.exceptions.HTTPError as http_err:
         logging.error(f"HTTP error occurred while fetching LTP: {http_err}")
     except Exception as err:
         logging.error(f"Other error occurred while fetching LTP: {err}")
-
     return None
 
 def trigger_order_on_rupeezy(order_details, retries=10):
@@ -148,16 +199,13 @@ if __name__ == '__main__':
         if alpha_data:
             logging.debug(f"Filtered ALPHA data: {alpha_data}")
             
-            # Get the current price from the Chartink data directly
-            current_price = alpha_data[0]['close']
-            logging.debug(f"LTP from Chartink data for ALPHA: {current_price}")
-
-            # Fetch LTP from Rupeezy as well
-            rupeezy_ltp = fetch_ltp_from_rupeezy(7412)
-            logging.debug(f"LTP from Rupeezy data for ALPHA: {rupeezy_ltp}")
+            # Get the current price from Rupeezy
+            current_price = fetch_ltp_from_rupeezy(7412)
+            if not current_price:
+                logging.error("Failed to fetch LTP from Rupeezy. Exiting.")
+                exit(1)
             
-            # Use Rupeezy LTP if available, otherwise fall back to Chartink LTP
-            ltp_to_use = rupeezy_ltp if rupeezy_ltp else current_price
+            logging.debug(f"LTP from Rupeezy data for ALPHA: {current_price}")
             
             order_quantity = 1  # Default quantity
             
@@ -169,7 +217,7 @@ if __name__ == '__main__':
                 "product": "DELIVERY",
                 "variety": "RL",
                 "quantity": order_quantity,
-                "price": ltp_to_use,
+                "price": current_price,
                 "trigger_price": 0.00,
                 "disclosed_quantity": 0,
                 "validity": "DAY",
@@ -181,6 +229,19 @@ if __name__ == '__main__':
             if response and response.get('status') == 'success':
                 order_id = response['data'].get('orderId')
                 logging.info(f"Order executed successfully with ID: {order_id}")
+                
+                # Store the order details in the database
+                conn = create_connection(DB_FILE)
+                if conn is not None:
+                    create_table(conn)
+                    order_entry = ("ALPHA", order_quantity, current_price, "BUY", "DELIVERY", current_price)
+                    insert_order(conn, order_entry)
+                    conn.close()
+
+                    # Upload the database to S3
+                    upload_to_s3(DB_FILE, 'my-beest-db')
+                else:
+                    logging.error("Failed to create the database connection.")
             else:
                 logging.error(f"Failed to place order. Response: {response}")
         else:
