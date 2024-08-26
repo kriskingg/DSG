@@ -11,7 +11,7 @@ load_dotenv()
 # Setup basic logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-# Constants for Chartink and Rupeezy
+# Constants for Chartink
 Charting_Link = "https://chartink.com/screener/"
 Charting_url = 'https://chartink.com/screener/process'
 condition = "( {166311} ( latest rsi(65) < latest ema(rsi(65),35) or weekly rsi(65) < weekly ema(rsi(65),35) ) )"
@@ -66,8 +66,8 @@ def fetch_chartink_data(condition):
     logging.error("All retries failed")
     return None
 
-def get_ltp_from_rupeezy(token):
-    """Fetch the LTP for a specific token from Rupeezy."""
+def fetch_ltp_from_rupeezy(token):
+    """Fetch LTP from Rupeezy for the given token."""
     api_url = f"https://vortex.trade.rupeezy.in/data/quote?q=NSE_EQ-{token}&mode=full"
     access_token = get_access_token()
     if not access_token:
@@ -83,9 +83,18 @@ def get_ltp_from_rupeezy(token):
         response = requests.get(api_url, headers=headers)
         response.raise_for_status()
         response_json = response.json()
-        ltp = response_json.get('data', {}).get('ltp')
-        logging.debug(f"LTP for token {token} from Rupeezy: {ltp}")
-        return ltp
+        logging.debug("Rupeezy LTP response: %s", response_json)
+
+        # Try different keys and approaches to find the LTP
+        ltp_1 = response_json.get('data', {}).get(f'NSE_EQ-{token}', {}).get('last_trade_price')
+        ltp_2 = response_json.get('data', {}).get(f'NSE_EQ-{token}', {}).get('close_price')
+        ltp_3 = response_json.get('data', {}).get(f'NSE_EQ-{token}', {}).get('depth', {}).get('sell', [])[0].get('price') if response_json.get('data', {}).get(f'NSE_EQ-{token}', {}).get('depth', {}).get('sell') else None
+        
+        logging.debug(f"LTP Possibilities: ltp_1={ltp_1}, ltp_2={ltp_2}, ltp_3={ltp_3}")
+        
+        # Return the first non-None LTP found
+        return ltp_1 or ltp_2 or ltp_3
+
     except requests.exceptions.HTTPError as http_err:
         logging.error(f"HTTP error occurred while fetching LTP: {http_err}")
     except Exception as err:
@@ -139,26 +148,28 @@ if __name__ == '__main__':
         if alpha_data:
             logging.debug(f"Filtered ALPHA data: {alpha_data}")
             
-            # Get the token for ALPHA
-            token = 7412  # Use the correct token for ALPHA
+            # Get the current price from the Chartink data directly
+            current_price = alpha_data[0]['close']
+            logging.debug(f"LTP from Chartink data for ALPHA: {current_price}")
+
+            # Fetch LTP from Rupeezy as well
+            rupeezy_ltp = fetch_ltp_from_rupeezy(7412)
+            logging.debug(f"LTP from Rupeezy data for ALPHA: {rupeezy_ltp}")
             
-            # Get the current price from Rupeezy directly
-            current_price = get_ltp_from_rupeezy(token)
-            if not current_price:
-                logging.error("Failed to fetch LTP from Rupeezy. Exiting.")
-                exit(1)
+            # Use Rupeezy LTP if available, otherwise fall back to Chartink LTP
+            ltp_to_use = rupeezy_ltp if rupeezy_ltp else current_price
             
             order_quantity = 1  # Default quantity
             
             order_details = {
                 "exchange": "NSE_EQ",
-                "token": token,  # Token number for ALPHA.
+                "token": 7412,  # Token number for ALPHA.
                 "symbol": "ALPHA",
                 "transaction_type": "BUY",
                 "product": "DELIVERY",
                 "variety": "RL",
                 "quantity": order_quantity,
-                "price": current_price,
+                "price": ltp_to_use,
                 "trigger_price": 0.00,
                 "disclosed_quantity": 0,
                 "validity": "DAY",
@@ -168,13 +179,8 @@ if __name__ == '__main__':
             
             response = trigger_order_on_rupeezy(order_details)
             if response and response.get('status') == 'success':
-                order_id = response['data'].get('order_id')
-                order_status_response = check_order_status(order_id)
-                if order_status_response and order_status_response.get('status') != 'PENDING':
-                    order_details['price'] = order_status_response.get('price', current_price)  # Update with the actual price from response
-                    logging.info(f"Order executed successfully. Response: {order_status_response}")
-                else:
-                    logging.error(f"Order {order_id} did not execute successfully. Final status: {order_status_response}")
+                order_id = response['data'].get('orderId')
+                logging.info(f"Order executed successfully with ID: {order_id}")
             else:
                 logging.error(f"Failed to place order. Response: {response}")
         else:
