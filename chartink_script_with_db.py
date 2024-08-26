@@ -179,20 +179,20 @@ if __name__ == '__main__':
     data = fetch_chartink_data(condition)
 
     if data:
-        alpha_etf_data = [item for item in data['data'] if item['nsecode'] == 'ALPHAETF']
+        alpha_data = [item for item in data['data'] if item['nsecode'] == 'ALPHA']
         
-        if alpha_etf_data:
-            logging.debug(f"Filtered ALPHAETF data: {alpha_etf_data}")
+        if alpha_data:
+            logging.debug(f"Filtered ALPHA data: {alpha_data}")
             
             # Get the current price from the data
-            current_price = alpha_etf_data[0]['close']
+            current_price = alpha_data[0]['close']
             
             order_quantity = 1  # Default quantity
             
             order_details = {
                 "exchange": "NSE_EQ",
-                "token": 19640,  # Token number for ALPHAETF.
-                "symbol": "ALPHAETF",
+                "token": 7414,  # Token number for ALPHA.
+                "symbol": "ALPHA",
                 "transaction_type": "BUY",
                 "product": "DELIVERY",
                 "variety": "RL",
@@ -211,13 +211,12 @@ if __name__ == '__main__':
                 order_status_response = check_order_status(order_id)
                 if order_status_response and order_status_response.get('status') != 'pending':
                     order_details['price'] = order_status_response.get('price', current_price)  # Update with the actual price from response
-                    # Assuming order_details are stored and used in db_operations_script.py
                     logging.info(f"Order executed successfully. Response: {order_status_response}")
                 else:
                     logging.error(f"Order {order_id} did not execute successfully. Final status: {order_status_response}")
             else:
                 logging.error(f"Failed to place order. Response: {response}")
         else:
-            logging.info("No ALPHAETF data found. No action taken.")
+            logging.info("No ALPHA data found. No action taken.")
     else:
         logging.error("Failed to fetch data from Chartink.")
