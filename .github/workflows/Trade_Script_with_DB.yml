@@ -39,6 +39,7 @@ jobs:
           aws configure set region ap-south-1
 
       - name: Run Trading Script
+        id: trading_script
         run: |
           python chartink_script_with_db.py
         env:
@@ -49,5 +50,6 @@ jobs:
           AWS_DEFAULT_REGION: ap-south-1
 
       - name: Run DB Operations Script
+        if: steps.trading_script.conclusion == 'success'
         run: |
           python db_operations_script.py
