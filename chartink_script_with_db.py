@@ -66,31 +66,6 @@ def fetch_chartink_data(condition):
     logging.error("All retries failed")
     return None
 
-def fetch_latest_ltp(symbol_token):
-    """Fetch the latest LTP for the given symbol token."""
-    api_url = f"https://vortex.trade.rupeezy.in/data/quote?q=NSE_EQ-{symbol_token}&mode=full"
-    access_token = get_access_token()
-    if not access_token:
-        logging.error("Access token is not available.")
-        return None
-
-    headers = {
-        "Authorization": f"Bearer {access_token}"
-    }
-
-    try:
-        response = requests.get(api_url, headers=headers)
-        response.raise_for_status()
-        response_json = response.json()
-        ltp = response_json['data'][0]['ltp']
-        logging.debug(f"Fetched LTP for token {symbol_token}: {ltp}")
-        return ltp
-    except requests.exceptions.HTTPError as http_err:
-        logging.error(f"HTTP error occurred while fetching LTP: {http_err}")
-    except Exception as err:
-        logging.error(f"Other error occurred while fetching LTP: {err}")
-    return None
-
 def check_order_status(order_id, retries=20, delay=10):
     """Check the status of an order by fetching the order book until it is no longer pending."""
     api_url = "https://vortex.trade.rupeezy.in/orders"
@@ -148,27 +123,23 @@ def trigger_order_on_rupeezy(order_details, retries=10):
     }
 
     for attempt in range(retries):
-        ltp = fetch_latest_ltp(order_details['token'])
-        if ltp and ltp <= order_details['price']:
-            order_details['price'] = ltp
-            logging.debug(f"Order attempt {attempt + 1} with LTP: {ltp}")
+        logging.debug(f"Order attempt {attempt + 1} with price: {order_details['price']}")
 
-            try:
-                response = requests.post(api_url, json=order_details, headers=headers)
-                response.raise_for_status()
-                response_json = response.json()
-                logging.debug("Order response: %s", response_json)
+        try:
+            response = requests.post(api_url, json=order_details, headers=headers)
+            response.raise_for_status()
+            response_json = response.json()
+            logging.debug("Order response: %s", response_json)
 
-                if response_json.get('status') == 'success':
-                    return response_json
-                else:
-                    logging.error(f"Order failed on attempt {attempt + 1}: {response_json}")
-            except requests.exceptions.HTTPError as http_err:
-                logging.error(f"HTTP error occurred during order attempt {attempt + 1}: {http_err}")
-            except Exception as err:
-                logging.error(f"Other error occurred during order attempt {attempt + 1}: {err}")
-        else:
-            logging.info(f"LTP {ltp} is higher than order price. Retrying...")
+            if response_json.get('status') == 'success':
+                return response_json
+            else:
+                logging.error(f"Order failed on attempt {attempt + 1}: {response_json}")
+        except requests.exceptions.HTTPError as http_err:
+            logging.error(f"HTTP error occurred during order attempt {attempt + 1}: {http_err}")
+        except Exception as err:
+            logging.error(f"Other error occurred during order attempt {attempt + 1}: {err}")
+
         sleep(2)  # Short delay before retrying
 
     logging.error("All retries for order placement failed.")
@@ -184,8 +155,9 @@ if __name__ == '__main__':
         if alpha_data:
             logging.debug(f"Filtered ALPHA data: {alpha_data}")
             
-            # Get the current price from the data
+            # Get the current price from the Chartink data directly
             current_price = alpha_data[0]['close']
+            logging.debug(f"LTP from Chartink data for ALPHA: {current_price}")
             
             order_quantity = 1  # Default quantity
             
@@ -211,13 +183,12 @@ if __name__ == '__main__':
                 order_status_response = check_order_status(order_id)
                 if order_status_response and order_status_response.get('status') != 'pending':
                     order_details['price'] = order_status_response.get('price', current_price)  # Update with the actual price from response
-                    # Assuming order_details are stored and used in db_operations_script.py
                     logging.info(f"Order executed successfully. Response: {order_status_response}")
                 else:
                     logging.error(f"Order {order_id} did not execute successfully. Final status: {order_status_response}")
             else:
                 logging.error(f"Failed to place order. Response: {response}")
         else:
-            logging.info("No ALPHA data found. No action taken.")
+            logging.info("No ALPHA data found in Chartink results. No action taken.")
     else:
         logging.error("Failed to fetch data from Chartink.")
