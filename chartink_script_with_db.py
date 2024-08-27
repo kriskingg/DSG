@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 load_dotenv()
 
 # Setup basic logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname=s)- %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 # Constants
 DB_FILE = "beest-orders.db"
@@ -191,30 +191,33 @@ def trigger_order_on_rupeezy(order_details, retries=10):
 
 def check_order_status(order_id, retries=10, delay=5):
     """Check the status of an order on Rupeezy."""
-    api_url = f"https://vortex.trade.rupeezy.in/orders/{order_id}"
-    access_token = get_access_token()
-    if not access_token:
-        logging.error("Access token is not available.")
-        return None
-
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json"
-    }
-
     for attempt in range(retries):
+        api_url = f"https://vortex.trade.rupeezy.in/orders?limit=10&offset=1"
+        access_token = get_access_token()
+        if not access_token:
+            logging.error("Access token is not available.")
+            return None
+
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        }
+
         try:
             response = requests.get(api_url, headers=headers)
             response.raise_for_status()
             response_json = response.json()
             logging.debug("Order status response: %s", response_json)
 
-            status = response_json.get('data', {}).get('status')
-            if status == 'executed':
-                return True
-            elif status == 'rejected':
-                logging.error(f"Order {order_id} was rejected: {response_json}")
-                return False
+            orders = response_json.get('orders', [])
+            for order in orders:
+                if order.get('order_id') == order_id:
+                    status = order.get('status')
+                    if status == 'executed':
+                        return True
+                    elif status == 'rejected':
+                        logging.error(f"Order {order_id} was rejected: {order}")
+                        return False
 
             logging.info(f"Order {order_id} is still pending. Retrying in {delay} seconds...")
         except requests.exceptions.HTTPError as http_err:
@@ -290,3 +293,4 @@ if __name__ == '__main__':
             logging.info("No ALPHAETF data found in Chartink results. No action taken.")
     else:
         logging.error("Failed to fetch data from Chartink.")
+                     
