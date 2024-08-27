@@ -2,6 +2,8 @@ name: Trade Script with DB and S3
 
 on:
   workflow_dispatch:  # Allows manual triggering
+  schedule:
+    - cron: "55 3 * * 1-5"  # This cron expression schedules the job to run at 9:25 AM IST (3:55 AM UTC) on weekdays (Monday to Friday)
 
 jobs:
   run-script:
