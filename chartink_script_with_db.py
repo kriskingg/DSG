@@ -56,7 +56,7 @@ def insert_order(conn, order):
     """Insert a new order into the orders table."""
     insert_order_sql = """
     INSERT INTO orders(symbol, quantity, price, transaction_type, product, ltp, executed_at)
-    VALUES(?, ?, ?, ?, ?, ?, datetime('now', 'localtime', '+05:30'));
+    VALUES(?, ?, ?, ?, ?, ?, datetime('now'));
     """
     try:
         cursor = conn.cursor()
@@ -228,4 +228,23 @@ if __name__ == '__main__':
             response = trigger_order_on_rupeezy(order_details)
             if response and response.get('status') == 'success':
                 order_id = response['data'].get('orderId')
-                logging.info(f"Order executed successfully with ID
+                logging.info(f"Order executed successfully with ID: {order_id}")
+                
+                # Store the order details in the database
+                conn = create_connection(DB_FILE)
+                if conn is not None:
+                    create_table(conn)
+                    order_entry = ("ALPHA", order_quantity, current_price, "BUY", "DELIVERY", current_price)
+                    insert_order(conn, order_entry)
+                    conn.close()
+
+                    # Upload the database to S3
+                    upload_to_s3(DB_FILE, 'my-beest-db')
+                else:
+                    logging.error("Failed to create the database connection.")
+            else:
+                logging.error(f"Failed to place order. Response: {response}")
+        else:
+            logging.info("No ALPHA data found in Chartink results. No action taken.")
+    else:
+        logging.error("Failed to fetch data from Chartink.")
