@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 load_dotenv()
 
 # Setup basic logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname=s)- %(message)s')
 
 # Constants
 DB_FILE = "beest-orders.db"
@@ -189,30 +189,68 @@ def trigger_order_on_rupeezy(order_details, retries=10):
     logging.error("All retries for order placement failed.")
     return None
 
+def check_order_status(order_id, retries=10, delay=5):
+    """Check the status of an order on Rupeezy."""
+    api_url = f"https://vortex.trade.rupeezy.in/orders/{order_id}"
+    access_token = get_access_token()
+    if not access_token:
+        logging.error("Access token is not available.")
+        return None
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+
+    for attempt in range(retries):
+        try:
+            response = requests.get(api_url, headers=headers)
+            response.raise_for_status()
+            response_json = response.json()
+            logging.debug("Order status response: %s", response_json)
+
+            status = response_json.get('data', {}).get('status')
+            if status == 'executed':
+                return True
+            elif status == 'rejected':
+                logging.error(f"Order {order_id} was rejected: {response_json}")
+                return False
+
+            logging.info(f"Order {order_id} is still pending. Retrying in {delay} seconds...")
+        except requests.exceptions.HTTPError as http_err:
+            logging.error(f"HTTP error occurred while checking order status: {http_err}")
+        except Exception as err:
+            logging.error(f"Other error occurred while checking order status: {err}")
+
+        sleep(delay)
+
+    logging.error(f"Order {order_id} could not be confirmed after {retries} retries.")
+    return False
+
 if __name__ == '__main__':
     # Fetch data from Chartink
     data = fetch_chartink_data(condition)
 
     if data:
-        alpha_data = [item for item in data['data'] if item['nsecode'] == 'ALPHA']
+        alpha_data = [item for item in data['data'] if item['nsecode'] == 'ALPHAETF']
         
         if alpha_data:
-            logging.debug(f"Filtered ALPHA data: {alpha_data}")
+            logging.debug(f"Filtered ALPHAETF data: {alpha_data}")
             
             # Get the current price from Rupeezy
-            current_price = fetch_ltp_from_rupeezy(7412)
+            current_price = fetch_ltp_from_rupeezy(19640)
             if not current_price:
                 logging.error("Failed to fetch LTP from Rupeezy. Exiting.")
                 exit(1)
             
-            logging.debug(f"LTP from Rupeezy data for ALPHA: {current_price}")
+            logging.debug(f"LTP from Rupeezy data for ALPHAETF: {current_price}")
             
             order_quantity = 1  # Default quantity
             
             order_details = {
                 "exchange": "NSE_EQ",
-                "token": 7412,  # Token number for ALPHA.
-                "symbol": "ALPHA",
+                "token": 19640,  # Token number for ALPHAETF.
+                "symbol": "ALPHAETF",
                 "transaction_type": "BUY",
                 "product": "DELIVERY",
                 "variety": "RL",
@@ -228,23 +266,27 @@ if __name__ == '__main__':
             response = trigger_order_on_rupeezy(order_details)
             if response and response.get('status') == 'success':
                 order_id = response['data'].get('orderId')
-                logging.info(f"Order executed successfully with ID: {order_id}")
+                logging.info(f"Order placed successfully with ID: {order_id}")
                 
-                # Store the order details in the database
-                conn = create_connection(DB_FILE)
-                if conn is not None:
-                    create_table(conn)
-                    order_entry = ("ALPHA", order_quantity, current_price, "BUY", "DELIVERY", current_price)
-                    insert_order(conn, order_entry)
-                    conn.close()
+                # Check order status to ensure it's executed
+                if check_order_status(order_id):
+                    # Store the order details in the database only if the order was executed successfully
+                    conn = create_connection(DB_FILE)
+                    if conn is not None:
+                        create_table(conn)
+                        order_entry = ("ALPHAETF", order_quantity, current_price, "BUY", "DELIVERY", current_price)
+                        insert_order(conn, order_entry)
+                        conn.close()
 
-                    # Upload the database to S3
-                    upload_to_s3(DB_FILE, 'my-beest-db')
+                        # Upload the database to S3
+                        upload_to_s3(DB_FILE, 'my-beest-db')
+                    else:
+                        logging.error("Failed to create the database connection.")
                 else:
-                    logging.error("Failed to create the database connection.")
+                    logging.error("Order was not executed successfully. Exiting.")
             else:
                 logging.error(f"Failed to place order. Response: {response}")
         else:
-            logging.info("No ALPHA data found in Chartink results. No action taken.")
+            logging.info("No ALPHAETF data found in Chartink results. No action taken.")
     else:
         logging.error("Failed to fetch data from Chartink.")
