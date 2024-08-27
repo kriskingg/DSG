@@ -56,7 +56,7 @@ def insert_order(conn, order):
     """Insert a new order into the orders table."""
     insert_order_sql = """
     INSERT INTO orders(symbol, quantity, price, transaction_type, product, ltp, executed_at)
-    VALUES(?, ?, ?, ?, ?, ?, datetime('now'));
+    VALUES(?, ?, ?, ?, ?, ?, datetime('now', 'localtime', '+05:30'));
     """
     try:
         cursor = conn.cursor()
