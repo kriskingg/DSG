@@ -119,7 +119,7 @@ def fetch_ltp_from_rupeezy(token):
         logging.error(f"Other error occurred while fetching LTP: {err}")
     return None
 
-def trigger_order_on_rupeezy(order_details, retries=10):
+def trigger_order_on_rupeezy(order_details, retries=10, sleep_time=10):
     """Trigger an order on Rupeezy with retry logic."""
     api_url = "https://vortex.trade.rupeezy.in/orders/regular"
     access_token = get_access_token()
@@ -133,7 +133,11 @@ def trigger_order_on_rupeezy(order_details, retries=10):
     }
 
     for attempt in range(retries):
-        logging.debug(f"Order attempt {attempt + 1} with price: {order_details['price']}")
+        # Fetch the latest LTP before each retry
+        current_price = fetch_ltp_from_rupeezy(order_details['token'])
+        if current_price:
+            order_details['price'] = current_price  # Adjust the order price to the current LTP
+            logging.debug(f"Order attempt {attempt + 1} with updated price: {current_price}")
 
         try:
             response = requests.post(api_url, json=order_details, headers=headers)
@@ -150,9 +154,26 @@ def trigger_order_on_rupeezy(order_details, retries=10):
         except Exception as err:
             logging.error(f"Other error occurred during order attempt {attempt + 1}: {err}")
 
-        sleep(2)  # Short delay before retrying
+        sleep(sleep_time)  # Increased sleep time to 10 seconds
 
-    logging.error("All retries for order placement failed.")
+    # If all retries fail, place a market order
+    logging.error("All retries for limit order placement failed. Attempting to place a market order.")
+    order_details['price'] = 0.00  # Setting price to 0 for market order
+    try:
+        response = requests.post(api_url, json=order_details, headers=headers)
+        response.raise_for_status()
+        response_json = response.json()
+        logging.debug("Market order response: %s", response_json)
+
+        if response_json.get('status') == 'success':
+            return response_json
+        else:
+            logging.error(f"Market order failed: {response_json}")
+    except requests.exceptions.HTTPError as http_err:
+        logging.error(f"HTTP error occurred during market order placement: {http_err}")
+    except Exception as err:
+        logging.error(f"Other error occurred during market order placement: {err}")
+
     return None
 
 def check_order_status(order_id, retries=10, delay=5):
@@ -230,21 +251,21 @@ if __name__ == '__main__':
         order_id = response['data'].get('orderId')
         logging.info(f"Order placed successfully with ID: {order_id}")
         
-    # Check order status to ensure it's executed
-    if check_order_status(order_id):
-        # Store the order details in the database only if the order was executed successfully
-        conn = create_connection(DB_FILE)
-        if conn is not None:
-            create_table(conn)
-            order_entry = ("ALPHAETF", order_quantity, current_price, "BUY", "DELIVERY", current_price)
-            insert_order(conn, order_entry)
-            conn.close()
+        # Check order status to ensure it's executed
+        if check_order_status(order_id):
+            # Store the order details in the database only if the order was executed successfully
+            conn = create_connection(DB_FILE)
+            if conn is not None:
+                create_table(conn)
+                order_entry = ("ALPHAETF", order_quantity, current_price, "BUY", "DELIVERY", current_price)
+                insert_order(conn, order_entry)
+                conn.close()
 
-            # Upload the database to S3
-            upload_to_s3(DB_FILE, 'my-beest-db')
+                # Upload the database to S3
+                upload_to_s3(DB_FILE, 'my-beest-db')
+            else:
+                logging.error("Failed to create the database connection.")
         else:
-            logging.error("Failed to create the database connection.")
+            logging.error("Order was not executed successfully. Exiting.")
     else:
-        logging.error("Order was not executed successfully. Exiting.")
-else:
-    logging.error(f"Failed to place order. Response: {response}")
+        logging.error(f"Failed to place order. Response: {response}")
