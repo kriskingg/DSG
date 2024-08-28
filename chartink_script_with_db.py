@@ -119,6 +119,39 @@ def fetch_ltp_from_rupeezy(token):
         logging.error(f"Other error occurred while fetching LTP: {err}")
     return None
 
+def modify_order_on_rupeezy(order_id, order_details):
+    """Modify an existing order on Rupeezy."""
+    api_url = f"https://vortex.trade.rupeezy.in/orders/modify"
+    access_token = get_access_token()
+    if not access_token:
+        logging.error("Access token is not available.")
+        return None
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+
+    order_details['orderId'] = order_id
+
+    try:
+        response = requests.post(api_url, json=order_details, headers=headers)
+        response.raise_for_status()
+        response_json = response.json()
+        logging.debug("Modify order response: %s", response_json)
+
+        if response_json.get('status') == 'success':
+            logging.info(f"Order modified successfully: {order_details['price']}")
+            return response_json
+        else:
+            logging.error(f"Failed to modify order: {response_json}")
+    except requests.exceptions.HTTPError as http_err:
+        logging.error(f"HTTP error occurred during order modification: {http_err}")
+    except Exception as err:
+        logging.error(f"Other error occurred during order modification: {err}")
+
+    return None
+
 def trigger_order_on_rupeezy(order_details, retries=10, sleep_time=10):
     """Trigger an order on Rupeezy with retry logic."""
     api_url = "https://vortex.trade.rupeezy.in/orders/regular"
@@ -132,28 +165,44 @@ def trigger_order_on_rupeezy(order_details, retries=10, sleep_time=10):
         "Content-Type": "application/json"
     }
 
+    # Place the initial order
+    initial_price = round(order_details['price'] * 0.999, 2)
+    order_details['price'] = initial_price
+    logging.debug(f"Placing first order with price: {initial_price}")
+
+    response = None
     for attempt in range(retries):
-        # Fetch the latest LTP for each attempt
-        current_price = fetch_ltp_from_rupeezy(order_details['token'])
-        if current_price:
-            order_details['price'] = round(current_price * 0.999, 2)  # Slightly below LTP
-            logging.debug(f"Order attempt {attempt + 1} with updated price: {order_details['price']}")
+        if attempt == 0:
+            # Place the initial order
+            try:
+                response = requests.post(api_url, json=order_details, headers=headers)
+                response.raise_for_status()
+                response_json = response.json()
+                logging.debug("Order response: %s", response_json)
 
-        try:
-            response = requests.post(api_url, json=order_details, headers=headers)
-            response.raise_for_status()
-            response_json = response.json()
-            logging.debug("Order response: %s", response_json)
-
-            if response_json.get('status') == 'success':
-                logging.info(f"Order successfully placed on attempt {attempt + 1} with price: {order_details['price']}")
-                return response_json
+                if response_json.get('status') == 'success':
+                    logging.info(f"Order successfully placed on attempt {attempt + 1} with price: {order_details['price']}")
+                    response = response_json
+                    order_id = response_json['data'].get('orderId')
+                else:
+                    logging.error(f"Order failed on attempt {attempt + 1}: {response_json}")
+                    return response_json
+            except requests.exceptions.HTTPError as http_err:
+                logging.error(f"HTTP error occurred during order attempt {attempt + 1}: {http_err}")
+                return None
+            except Exception as err:
+                logging.error(f"Other error occurred during order attempt {attempt + 1}: {err}")
+                return None
+        else:
+            # Fetch the latest LTP after the first attempt and modify the existing order
+            current_price = fetch_ltp_from_rupeezy(order_details['token'])
+            if current_price:
+                order_details['price'] = current_price
+                logging.debug(f"Attempting to modify order on attempt {attempt + 1} with updated price: {current_price}")
+                modify_order_on_rupeezy(order_id, order_details)
             else:
-                logging.error(f"Order failed on attempt {attempt + 1}: {response_json}")
-        except requests.exceptions.HTTPError as http_err:
-            logging.error(f"HTTP error occurred during order attempt {attempt + 1}: {http_err}")
-        except Exception as err:
-            logging.error(f"Other error occurred during order attempt {attempt + 1}: {err}")
+                logging.error("Failed to fetch the latest LTP during retry.")
+                return None
 
         sleep(sleep_time)  # Increased sleep time to 10 seconds
 
