@@ -223,6 +223,37 @@ def check_order_status(order_id, retries=10, delay=5):
     logging.error(f"Order {order_id} could not be confirmed after {retries} retries.")
     return False
 
+def fetch_trade_details(order_id):
+    """Fetch the trade details for an executed order."""
+    api_url = f"https://vortex.trade.rupeezy.in/trades?limit=10&offset=1"
+    access_token = get_access_token()
+    if not access_token:
+        logging.error("Access token is not available.")
+        return None
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+
+    try:
+        response = requests.get(api_url, headers=headers)
+        response.raise_for_status()
+        response_json = response.json()
+        logging.debug("Trade details response: %s", response_json)
+
+        trades = response_json.get('trades', [])
+        for trade in trades:
+            if trade.get('order_id') == order_id:
+                return trade
+
+    except requests.exceptions.HTTPError as http_err:
+        logging.error(f"HTTP error occurred while fetching trade details: {http_err}")
+    except Exception as err:
+        logging.error(f"Other error occurred while fetching trade details: {err}")
+
+    return None
+
 if __name__ == '__main__':
     # Example data for the order
     token = 7412  # Updated token for ALPHA
@@ -259,18 +290,26 @@ if __name__ == '__main__':
         
         # Check order status to ensure it's executed
         if check_order_status(order_id):
-            # Store the order details in the database only if the order was executed successfully
-            conn = create_connection(DB_FILE)
-            if conn is not None:
-                create_table(conn)
-                order_entry = ("ALPHA", order_quantity, current_price, "BUY", "DELIVERY", current_price)
-                insert_order(conn, order_entry)
-                conn.close()
+            # Fetch trade details after the order is executed
+            trade_details = fetch_trade_details(order_id)
+            if trade_details:
+                executed_price = trade_details.get('trade_price')
+                logging.info(f"Order executed at price: {executed_price}")
+                
+                # Store the order details in the database
+                conn = create_connection(DB_FILE)
+                if conn is not None:
+                    create_table(conn)
+                    order_entry = ("ALPHA", order_quantity, executed_price, "BUY", "DELIVERY", executed_price)
+                    insert_order(conn, order_entry)
+                    conn.close()
 
-                # Upload the database to S3
-                upload_to_s3(DB_FILE, 'my-beest-db')
+                    # Upload the database to S3
+                    upload_to_s3(DB_FILE, 'my-beest-db')
+                else:
+                    logging.error("Failed to create the database connection.")
             else:
-                logging.error("Failed to create the database connection.")
+                logging.error("Failed to fetch trade details. Exiting.")
         else:
             logging.error("Order was not executed successfully. Exiting.")
     else:
