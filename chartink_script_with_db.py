@@ -142,7 +142,8 @@ def trigger_order_on_rupeezy(order_details, retries=10, sleep_time=10):
             # Fetch the latest LTP after the first attempt
             current_price = fetch_ltp_from_rupeezy(order_details['token'])
             if current_price:
-                order_details['price'] = current_price  # Adjust the order price to the current LTP
+                # Ensure the order is placed with LTP on subsequent attempts
+                order_details['price'] = current_price
                 logging.debug(f"Order attempt {attempt + 1} with updated price: {current_price}")
 
         try:
@@ -152,6 +153,8 @@ def trigger_order_on_rupeezy(order_details, retries=10, sleep_time=10):
             logging.debug("Order response: %s", response_json)
 
             if response_json.get('status') == 'success':
+                if attempt > 0:
+                    logging.info(f"Order successfully placed with updated LTP: {order_details['price']}")
                 return response_json
             else:
                 logging.error(f"Order failed on attempt {attempt + 1}: {response_json}")
