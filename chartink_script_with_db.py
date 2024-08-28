@@ -111,10 +111,7 @@ def fetch_ltp_from_rupeezy(token):
         ltp_1 = ltp_data.get('last_trade_price')
         ltp_2 = ltp_data.get('close_price')
         ltp_3 = ltp_1 if ltp_1 else ltp_2
-
-        # Log the exact LTP received from the broker
-        logging.debug(f"LTP from broker: ltp_1={ltp_1}, ltp_2={ltp_2}, selected LTP={ltp_3}")
-
+        logging.debug(f"LTP Possibilities: ltp_1={ltp_1}, ltp_2={ltp_2}, ltp_3={ltp_3}")
         return ltp_3
     except requests.exceptions.HTTPError as http_err:
         logging.error(f"HTTP error occurred while fetching LTP: {http_err}")
@@ -171,6 +168,7 @@ def trigger_order_on_rupeezy(order_details, retries=10, sleep_time=10):
     # If all retries fail, place a market order
     logging.error("All retries for limit order placement failed. Attempting to place a market order.")
     order_details['price'] = 0.00  # Setting price to 0 for market order
+    order_details['variety'] = 'RL-MKT'  # Market order
     try:
         response = requests.post(api_url, json=order_details, headers=headers)
         response.raise_for_status()
@@ -178,6 +176,7 @@ def trigger_order_on_rupeezy(order_details, retries=10, sleep_time=10):
         logging.debug("Market order response: %s", response_json)
 
         if response_json.get('status') == 'success':
+            logging.info(f"Market order placed successfully for {order_details['symbol']}.")
             return response_json
         else:
             logging.error(f"Market order failed: {response_json}")
@@ -279,7 +278,7 @@ if __name__ == '__main__':
         "symbol": "ALPHA",
         "transaction_type": "BUY",
         "product": "DELIVERY",
-        "variety": "RL",
+        "variety": "RL",  # Regular Limit Order
         "quantity": order_quantity,
         "price": current_price,
         "trigger_price": 0.00,
@@ -320,3 +319,4 @@ if __name__ == '__main__':
             logging.error("Order was not executed successfully. Exiting.")
     else:
         logging.error(f"Failed to place order. Response: {response}")
+
