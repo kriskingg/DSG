@@ -219,7 +219,7 @@ def check_order_status(order_id, retries=10, delay=5):
 
 if __name__ == '__main__':
     # Example data for the order
-    token = 19640  # ALPHAETF Token
+    token = 7412  # Updated token for ALPHA
     order_quantity = 1  # Default quantity
 
     # Get the current price from Rupeezy
@@ -228,12 +228,12 @@ if __name__ == '__main__':
         logging.error("Failed to fetch LTP from Rupeezy. Exiting.")
         exit(1)
     
-    logging.debug(f"LTP from Rupeezy data for ALPHAETF: {current_price}")
+    logging.debug(f"LTP from Rupeezy data for ALPHA: {current_price}")
     
     order_details = {
         "exchange": "NSE_EQ",
         "token": token,
-        "symbol": "ALPHAETF",
+        "symbol": "ALPHA",
         "transaction_type": "BUY",
         "product": "DELIVERY",
         "variety": "RL",
@@ -257,7 +257,7 @@ if __name__ == '__main__':
             conn = create_connection(DB_FILE)
             if conn is not None:
                 create_table(conn)
-                order_entry = ("ALPHAETF", order_quantity, current_price, "BUY", "DELIVERY", current_price)
+                order_entry = ("ALPHA", order_quantity, current_price, "BUY", "DELIVERY", current_price)
                 insert_order(conn, order_entry)
                 conn.close()
 
