@@ -133,12 +133,11 @@ def trigger_order_on_rupeezy(order_details, retries=10, sleep_time=10):
     }
 
     for attempt in range(retries):
-        # Fetch the latest LTP before each attempt
+        # Fetch the latest LTP for each attempt
         current_price = fetch_ltp_from_rupeezy(order_details['token'])
         if current_price:
-            # Set the order price to the latest LTP
-            order_details['price'] = current_price
-            logging.debug(f"Order attempt {attempt + 1} with updated price: {current_price}")
+            order_details['price'] = round(current_price * 0.999, 2)  # Slightly below LTP
+            logging.debug(f"Order attempt {attempt + 1} with updated price: {order_details['price']}")
 
         try:
             response = requests.post(api_url, json=order_details, headers=headers)
@@ -147,7 +146,7 @@ def trigger_order_on_rupeezy(order_details, retries=10, sleep_time=10):
             logging.debug("Order response: %s", response_json)
 
             if response_json.get('status') == 'success':
-                logging.info(f"Order successfully placed with updated LTP: {order_details['price']}")
+                logging.info(f"Order successfully placed on attempt {attempt + 1} with price: {order_details['price']}")
                 return response_json
             else:
                 logging.error(f"Order failed on attempt {attempt + 1}: {response_json}")
@@ -309,4 +308,6 @@ if __name__ == '__main__':
             else:
                 logging.error("Failed to fetch trade details. Exiting.")
         else:
-            logging.error("Order was
+            logging.error("Order was not executed successfully. Exiting.")
+    else:
+        logging.error(f"Failed to place order. Response: {response}")
