@@ -132,19 +132,13 @@ def trigger_order_on_rupeezy(order_details, retries=10, sleep_time=10):
         "Content-Type": "application/json"
     }
 
-    # Initial order price is 0.10% less than LTP
-    initial_price = round(order_details['price'] * 0.999, 2)
-    order_details['price'] = initial_price
-    logging.debug(f"Placing first order with price: {initial_price}")
-
     for attempt in range(retries):
-        if attempt > 0:
-            # Fetch the latest LTP after the first attempt
-            current_price = fetch_ltp_from_rupeezy(order_details['token'])
-            if current_price:
-                # Ensure the order is placed with LTP on subsequent attempts
-                order_details['price'] = current_price
-                logging.debug(f"Order attempt {attempt + 1} with updated price: {current_price}")
+        # Fetch the latest LTP before each attempt
+        current_price = fetch_ltp_from_rupeezy(order_details['token'])
+        if current_price:
+            # Set the order price to the latest LTP
+            order_details['price'] = current_price
+            logging.debug(f"Order attempt {attempt + 1} with updated price: {current_price}")
 
         try:
             response = requests.post(api_url, json=order_details, headers=headers)
@@ -153,8 +147,7 @@ def trigger_order_on_rupeezy(order_details, retries=10, sleep_time=10):
             logging.debug("Order response: %s", response_json)
 
             if response_json.get('status') == 'success':
-                if attempt > 0:
-                    logging.info(f"Order successfully placed with updated LTP: {order_details['price']}")
+                logging.info(f"Order successfully placed with updated LTP: {order_details['price']}")
                 return response_json
             else:
                 logging.error(f"Order failed on attempt {attempt + 1}: {response_json}")
@@ -316,7 +309,4 @@ if __name__ == '__main__':
             else:
                 logging.error("Failed to fetch trade details. Exiting.")
         else:
-            logging.error("Order was not executed successfully. Exiting.")
-    else:
-        logging.error(f"Failed to place order. Response: {response}")
-
+            logging.error("Order was
