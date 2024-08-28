@@ -319,7 +319,7 @@ if __name__ == '__main__':
         "symbol": "ALPHA",
         "transaction_type": "BUY",
         "product": "DELIVERY",
-        "variety": "RL",  # Regular Limit Order
+        "variety": "RL-MKT",  # Regular Limit Order
         "quantity": order_quantity,
         "price": current_price,
         "trigger_price": 0.00,
