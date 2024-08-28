@@ -111,7 +111,10 @@ def fetch_ltp_from_rupeezy(token):
         ltp_1 = ltp_data.get('last_trade_price')
         ltp_2 = ltp_data.get('close_price')
         ltp_3 = ltp_1 if ltp_1 else ltp_2
-        logging.debug(f"LTP Possibilities: ltp_1={ltp_1}, ltp_2={ltp_2}, ltp_3={ltp_3}")
+
+        # Log the exact LTP received from the broker
+        logging.debug(f"LTP from broker: ltp_1={ltp_1}, ltp_2={ltp_2}, selected LTP={ltp_3}")
+
         return ltp_3
     except requests.exceptions.HTTPError as http_err:
         logging.error(f"HTTP error occurred while fetching LTP: {http_err}")
