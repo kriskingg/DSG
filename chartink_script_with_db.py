@@ -3,7 +3,6 @@ import sqlite3
 import boto3
 import logging
 from dotenv import load_dotenv
-from time import sleep
 import requests
 
 # Load environment variables from .env file
@@ -88,72 +87,8 @@ def get_access_token():
         logging.error(f"Error reading access token: {e}")
         return None
 
-def fetch_ltp_from_rupeezy(token):
-    """Fetch the LTP from Rupeezy."""
-    api_url = f"https://vortex.trade.rupeezy.in/data/quote?q=NSE_EQ-{token}&mode=full"
-    access_token = get_access_token()
-    if not access_token:
-        logging.error("Access token is not available.")
-        return None
-
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json"
-    }
-
-    try:
-        response = requests.get(api_url, headers=headers)
-        response.raise_for_status()
-        response_json = response.json()
-        logging.debug(f"Rupeezy LTP response: {response_json}")
-
-        ltp_data = response_json.get('data', {}).get(f'NSE_EQ-{token}', {})
-        ltp_1 = ltp_data.get('last_trade_price')
-        ltp_2 = ltp_data.get('close_price')
-        ltp_3 = ltp_1 if ltp_1 else ltp_2
-        logging.debug(f"LTP Possibilities: ltp_1={ltp_1}, ltp_2={ltp_2}, ltp_3={ltp_3}")
-        return ltp_3
-    except requests.exceptions.HTTPError as http_err:
-        logging.error(f"HTTP error occurred while fetching LTP: {http_err}")
-    except Exception as err:
-        logging.error(f"Other error occurred while fetching LTP: {err}")
-    return None
-
-def modify_order_on_rupeezy(order_id, order_details):
-    """Modify an existing order on Rupeezy."""
-    api_url = f"https://vortex.trade.rupeezy.in/orders/modify"
-    access_token = get_access_token()
-    if not access_token:
-        logging.error("Access token is not available.")
-        return None
-
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json"
-    }
-
-    order_details['orderId'] = order_id
-
-    try:
-        response = requests.post(api_url, json=order_details, headers=headers)
-        response.raise_for_status()
-        response_json = response.json()
-        logging.debug("Modify order response: %s", response_json)
-
-        if response_json.get('status') == 'success':
-            logging.info(f"Order modified successfully: {order_details['price']}")
-            return response_json
-        else:
-            logging.error(f"Failed to modify order: {response_json}")
-    except requests.exceptions.HTTPError as http_err:
-        logging.error(f"HTTP error occurred during order modification: {http_err}")
-    except Exception as err:
-        logging.error(f"Other error occurred during order modification: {err}")
-
-    return None
-
-def trigger_order_on_rupeezy(order_details, retries=10, sleep_time=10):
-    """Trigger an order on Rupeezy with retry logic."""
+def trigger_order_on_rupeezy(order_details):
+    """Trigger an order on Rupeezy."""
     api_url = "https://vortex.trade.rupeezy.in/orders/regular"
     access_token = get_access_token()
     if not access_token:
@@ -165,66 +100,22 @@ def trigger_order_on_rupeezy(order_details, retries=10, sleep_time=10):
         "Content-Type": "application/json"
     }
 
-    # Place the initial order
-    initial_price = round(order_details['price'] * 0.999, 2)
-    order_details['price'] = initial_price
-    logging.debug(f"Placing first order with price: {initial_price}")
-
-    response = None
-    for attempt in range(retries):
-        if attempt == 0:
-            # Place the initial order
-            try:
-                response = requests.post(api_url, json=order_details, headers=headers)
-                response.raise_for_status()
-                response_json = response.json()
-                logging.debug("Order response: %s", response_json)
-
-                if response_json.get('status') == 'success':
-                    logging.info(f"Order successfully placed on attempt {attempt + 1} with price: {order_details['price']}")
-                    response = response_json
-                    order_id = response_json['data'].get('orderId')
-                else:
-                    logging.error(f"Order failed on attempt {attempt + 1}: {response_json}")
-                    return response_json
-            except requests.exceptions.HTTPError as http_err:
-                logging.error(f"HTTP error occurred during order attempt {attempt + 1}: {http_err}")
-                return None
-            except Exception as err:
-                logging.error(f"Other error occurred during order attempt {attempt + 1}: {err}")
-                return None
-        else:
-            # Fetch the latest LTP after the first attempt and modify the existing order
-            current_price = fetch_ltp_from_rupeezy(order_details['token'])
-            if current_price:
-                order_details['price'] = current_price
-                logging.debug(f"Attempting to modify order on attempt {attempt + 1} with updated price: {current_price}")
-                modify_order_on_rupeezy(order_id, order_details)
-            else:
-                logging.error("Failed to fetch the latest LTP during retry.")
-                return None
-
-        sleep(sleep_time)  # Increased sleep time to 10 seconds
-
-    # If all retries fail, place a market order
-    logging.error("All retries for limit order placement failed. Attempting to place a market order.")
-    order_details['price'] = 0.00  # Setting price to 0 for market order
-    order_details['variety'] = 'RL-MKT'  # Market order
     try:
         response = requests.post(api_url, json=order_details, headers=headers)
         response.raise_for_status()
         response_json = response.json()
-        logging.debug("Market order response: %s", response_json)
+        logging.debug("Order response: %s", response_json)
 
         if response_json.get('status') == 'success':
-            logging.info(f"Market order placed successfully for {order_details['symbol']}.")
+            logging.info(f"Market order successfully placed with price: {order_details['price']}")
             return response_json
         else:
-            logging.error(f"Market order failed: {response_json}")
+            logging.error(f"Order placement failed: {response_json}")
+            return None
     except requests.exceptions.HTTPError as http_err:
-        logging.error(f"HTTP error occurred during market order placement: {http_err}")
+        logging.error(f"HTTP error occurred during order placement: {http_err}")
     except Exception as err:
-        logging.error(f"Other error occurred during market order placement: {err}")
+        logging.error(f"Other error occurred during order placement: {err}")
 
     return None
 
@@ -305,23 +196,15 @@ if __name__ == '__main__':
     token = 7412  # Updated token for ALPHA
     order_quantity = 1  # Default quantity
 
-    # Get the current price from Rupeezy
-    current_price = fetch_ltp_from_rupeezy(token)
-    if not current_price:
-        logging.error("Failed to fetch LTP from Rupeezy. Exiting.")
-        exit(1)
-    
-    logging.debug(f"LTP from Rupeezy data for ALPHA: {current_price}")
-    
     order_details = {
         "exchange": "NSE_EQ",
         "token": token,
         "symbol": "ALPHA",
         "transaction_type": "BUY",
         "product": "DELIVERY",
-        "variety": "RL-MKT",  # Regular Limit Order
+        "variety": "RL-MKT",  # Market Order
         "quantity": order_quantity,
-        "price": current_price,
+        "price": 0.00,  # Price set to 0 for market order
         "trigger_price": 0.00,
         "disclosed_quantity": 0,
         "validity": "DAY",
