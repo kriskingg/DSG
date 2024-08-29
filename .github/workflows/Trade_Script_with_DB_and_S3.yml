@@ -1,0 +1,51 @@
+name: Trade Script with DB and S3
+
+on:
+  workflow_dispatch:  # Allows manual triggering
+  schedule:
+    - cron: "55 3 * * 1-5"  # This cron expression schedules the job to run at 9:25 AM IST (3:55 AM UTC) on weekdays (Monday to Friday)
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest  # Ensure this uses GitHub-hosted runner for Linux
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'  # Specifying version
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Download Access Token Artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Set GH_TOKEN for GitHub CLI authentication
+        run: |
+          gh run download --repo ${{ github.repository }} --name access_token --dir ./token
+
+      - name: Set Access Token as Environment Variable
+        run: |
+          ACCESS_TOKEN=$(cat ./token/access_token.txt)
+          echo "ACCESS_TOKEN=${ACCESS_TOKEN}" >> $GITHUB_ENV
+
+      - name: Configure AWS Credentials
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws configure set region ap-south-1
+
+      - name: Run Main Orchestration Script
+        run: |
+          python rupeezy/main.py
+        env:
+          YOUR_API_KEY: ${{ secrets.YOUR_API_KEY }}
+          ACCESS_TOKEN: ${{ env.ACCESS_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ap-south-1
