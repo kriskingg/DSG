@@ -42,7 +42,7 @@ if __name__ == '__main__':
                 # Store the order details in DynamoDB
                 insert_order_dynamodb(
                     user_id="user123",  # Replace with actual user ID
-                    symbol="ALPHAETF", 
+                    instrument_id="ALPHAETF",  # Updated to match the parameter in insert_order_dynamodb
                     quantity=order_quantity, 
                     price=executed_price, 
                     transaction_type="BUY", 

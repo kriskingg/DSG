@@ -18,7 +18,6 @@ def insert_order_dynamodb(user_id, instrument_id, quantity, price, transaction_t
     """Insert a new order into the DynamoDB table."""
     executed_at = get_ist_datetime()  # Get current date and time in IST
     try:
-        # Use a unique ID for each entry to avoid overwriting
         dynamodb.put_item(
             TableName='Portfolio',
             Item={
@@ -35,3 +34,15 @@ def insert_order_dynamodb(user_id, instrument_id, quantity, price, transaction_t
         logging.info(f"Order for {instrument_id} inserted into DynamoDB.")
     except Exception as e:
         logging.error(f"Failed to insert item into DynamoDB: {e}")
+
+# Example usage (for testing):
+if __name__ == "__main__":
+    insert_order_dynamodb(
+        user_id="user123",
+        instrument_id="ALPHAETF",
+        quantity=1,
+        price=100.50,
+        transaction_type="BUY",
+        product="DELIVERY",
+        ltp=100.50
+    )
