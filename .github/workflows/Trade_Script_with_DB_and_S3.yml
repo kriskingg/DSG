@@ -1,4 +1,4 @@
-name: Beest ETF Modularized Script Workflow
+name: Beest ETF Modularized with AWS DynamoDB
 
 on:
   workflow_dispatch:  # Allows manual triggering
