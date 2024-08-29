@@ -5,16 +5,19 @@ from db_operations import insert_order_dynamodb
 # Setup basic logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-def place_order(symbol, token):
+if __name__ == '__main__':
     # Example data for the order
+    token = 7412  # Updated token for ALPHA
+    order_quantity = 1  # Default quantity
+
     order_details = {
         "exchange": "NSE_EQ",
         "token": token,
-        "symbol": symbol,
+        "symbol": "ALPHA",
         "transaction_type": "BUY",
         "product": "DELIVERY",
         "variety": "RL-MKT",  # Market Order
-        "quantity": 1,  # Default quantity
+        "quantity": order_quantity,
         "price": 0.00,  # Price set to 0 for market order
         "trigger_price": 0.00,
         "disclosed_quantity": 0,
@@ -22,7 +25,7 @@ def place_order(symbol, token):
         "validity_days": 1,
         "is_amo": False
     }
-
+    
     response = trigger_order_on_rupeezy(order_details)
     if response and response.get('status') == 'success':
         order_id = response['data'].get('orderId')
@@ -39,35 +42,16 @@ def place_order(symbol, token):
                 # Store the order details in DynamoDB
                 insert_order_dynamodb(
                     user_id="user123",  # Replace with actual user ID
-                    symbol=symbol, 
-                    quantity=1,  # Default quantity
+                    symbol="ALPHA", 
+                    quantity=order_quantity, 
                     price=executed_price, 
                     transaction_type="BUY", 
                     product="DELIVERY", 
                     ltp=executed_price
                 )
-                return True
             else:
                 logging.error("Failed to fetch trade details. Exiting.")
-                return False
         else:
             logging.error("Order was not executed successfully. Exiting.")
-            return False
     else:
         logging.error(f"Failed to place order. Response: {response}")
-        return False
-
-if __name__ == '__main__':
-    # Tokens and symbols
-    symbol_token_mapping = {
-        "ALPHA": 7412,
-        "ALPHAETF": 19640
-    }
-
-    # Try placing order for ALPHA
-    success = place_order("ALPHA", symbol_token_mapping["ALPHA"])
-    
-    # If order for ALPHA failed, try placing order for ALPHAETF
-    if not success:
-        logging.info("Retrying with ALPHAETF")
-        place_order("ALPHAETF", symbol_token_mapping["ALPHAETF"])
