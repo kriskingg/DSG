@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(leve
 API_BASE_URL = "https://vortex.trade.rupeezy.in"
 
 def place_order(symbol, token):
-    # Example data for the order
+    """Place an order and update DynamoDB with the order details."""
     order_details = {
         "exchange": "NSE_EQ",
         "token": token,
@@ -66,6 +66,7 @@ def place_order(symbol, token):
         return False
 
 def check_order_status(order_id):
+    """Check the status of an order."""
     try:
         response = requests.get(f"{API_BASE_URL}/orders/{order_id}")
         response.raise_for_status()
@@ -77,6 +78,7 @@ def check_order_status(order_id):
         return False
 
 def fetch_trade_details(order_id):
+    """Fetch trade details for an order."""
     try:
         response = requests.get(f"{API_BASE_URL}/trades?order_id={order_id}")
         response.raise_for_status()
