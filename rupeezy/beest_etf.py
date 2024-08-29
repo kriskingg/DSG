@@ -1,6 +1,7 @@
 import requests
 import logging
 from auth import get_access_token
+from time import sleep
 
 # Setup basic logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
