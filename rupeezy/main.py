@@ -1,12 +1,9 @@
 import logging
-from db_operations import create_connection, create_table, insert_order
-from s3_operations import upload_to_s3
 from beest_etf import trigger_order_on_rupeezy, check_order_status, fetch_trade_details
+from db_operations import insert_order_dynamodb
 
 # Setup basic logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-DB_FILE = "beest-orders.db"
 
 if __name__ == '__main__':
     # Example data for the order
@@ -42,18 +39,16 @@ if __name__ == '__main__':
                 executed_price = trade_details.get('trade_price')
                 logging.info(f"Order executed at price: {executed_price}")
                 
-                # Store the order details in the database
-                conn = create_connection(DB_FILE)
-                if conn is not None:
-                    create_table(conn)
-                    order_entry = ("ALPHA", order_quantity, executed_price, "BUY", "DELIVERY", executed_price)
-                    insert_order(conn, order_entry)
-                    conn.close()
-
-                    # Upload the database to S3
-                    upload_to_s3(DB_FILE, 'my-beest-db')
-                else:
-                    logging.error("Failed to create the database connection.")
+                # Store the order details in DynamoDB
+                insert_order_dynamodb(
+                    user_id="user123",  # Replace with actual user ID
+                    symbol="ALPHA", 
+                    quantity=order_quantity, 
+                    price=executed_price, 
+                    transaction_type="BUY", 
+                    product="DELIVERY", 
+                    ltp=executed_price
+                )
             else:
                 logging.error("Failed to fetch trade details. Exiting.")
         else:
