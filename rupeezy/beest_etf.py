@@ -1,7 +1,7 @@
 import requests
 import logging
 from auth import get_access_token
-from time import sleep
+from time import sleep  # Import the sleep function
 
 # Setup basic logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -63,10 +63,15 @@ def check_order_status(order_id, retries=10, delay=5):
                 if order.get('order_id') == order_id:
                     status = order.get('status')
                     if status == 'EXECUTED':
+                        logging.info(f"Order {order_id} has been executed.")
                         return True
-                    elif status == 'REJECTED':
-                        logging.error(f"Order {order_id} was rejected: {order}")
+                    elif status in ['REJECTED', 'ADMINREJECT']:
+                        logging.error(f"Order {order_id} was rejected: {order.get('error_reason', 'Unknown reason')}")
                         return False
+                    elif status == 'PENDING':
+                        logging.info(f"Order {order_id} is still pending.")
+                        # Explicit pending status check
+                        break
 
             logging.info(f"Order {order_id} is still pending. Retrying in {delay} seconds...")
         except requests.exceptions.HTTPError as http_err:
