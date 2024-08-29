@@ -1,9 +1,31 @@
 import logging
+import requests
 from beest_etf import trigger_order_on_rupeezy, check_order_status, fetch_trade_details
 from db_operations import insert_order_dynamodb
 
 # Setup basic logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+# Define your API base URL
+API_BASE_URL = "https://vortex.trade.rupeezy.in"
+
+def fetch_order_details(order_id):
+    try:
+        response = requests.get(f"{API_BASE_URL}/orders?limit=10&offset=1")
+        response.raise_for_status()
+        orders = response.json()
+        logging.info(f"Orders details fetched: {orders}")
+    except requests.RequestException as e:
+        logging.error(f"Error fetching order details: {e}")
+
+def fetch_trade_details(order_id):
+    try:
+        response = requests.get(f"{API_BASE_URL}/trades?limit=10&offset=1")
+        response.raise_for_status()
+        trades = response.json()
+        logging.info(f"Trade details fetched: {trades}")
+    except requests.RequestException as e:
+        logging.error(f"Error fetching trade details: {e}")
 
 def place_order(symbol, token):
     # Example data for the order
@@ -27,7 +49,11 @@ def place_order(symbol, token):
     if response and response.get('status') == 'success':
         order_id = response['data'].get('orderId')
         logging.info(f"Order placed successfully with ID: {order_id}")
-        
+
+        # Fetch and log details from the API
+        fetch_order_details(order_id)
+        fetch_trade_details(order_id)
+
         # Check order status to ensure it's executed
         if check_order_status(order_id):
             # Fetch trade details after the order is executed
@@ -35,7 +61,7 @@ def place_order(symbol, token):
             if trade_details:
                 executed_price = trade_details.get('trade_price')
                 logging.info(f"Order executed at price: {executed_price}")
-                
+
                 # Store the order details in DynamoDB
                 insert_order_dynamodb(
                     user_id="user123",  # Replace with actual user ID
@@ -66,7 +92,7 @@ if __name__ == '__main__':
 
     # Try placing order for ALPHA
     success = place_order("ALPHA", symbol_token_mapping["ALPHA"])
-    
+
     # If order for ALPHA failed, try placing order for ALPHAETF
     if not success:
         logging.info("Retrying with ALPHAETF")
