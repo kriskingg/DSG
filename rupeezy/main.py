@@ -26,39 +26,43 @@ def place_order(symbol, token):
         "is_amo": False
     }
 
-    response = trigger_order_on_rupeezy(order_details)
-    if response and response.get('status') == 'success':
-        order_id = response['data'].get('orderId')
-        logging.info(f"Order placed successfully with ID: {order_id}")
+    try:
+        response = trigger_order_on_rupeezy(order_details)
+        if response and response.get('status') == 'success':
+            order_id = response['data'].get('orderId')
+            logging.info(f"Order placed successfully with ID: {order_id}")
 
-        # Check order status to ensure it's executed
-        if check_order_status(order_id):
-            logging.info("Order executed successfully. Fetching trade details.")
-            # Fetch trade details after the order is executed
-            trade_details = fetch_trade_details(order_id)
-            if trade_details:
-                executed_price = trade_details.get('trade_price')
-                logging.info(f"Order executed at price: {executed_price}")
+            # Check order status to ensure it's executed
+            if check_order_status(order_id):
+                logging.info("Order executed successfully. Fetching trade details.")
+                # Fetch trade details after the order is executed
+                trade_details = fetch_trade_details(order_id)
+                if trade_details:
+                    executed_price = trade_details.get('trade_price')
+                    logging.info(f"Order executed at price: {executed_price}")
 
-                # Store the order details in DynamoDB
-                insert_order_dynamodb(
-                    user_id="user123",  # Replace with actual user ID
-                    symbol=symbol, 
-                    quantity=1,  # Default quantity
-                    price=executed_price, 
-                    transaction_type="BUY", 
-                    product="DELIVERY", 
-                    ltp=executed_price
-                )
-                return True
+                    # Store the order details in DynamoDB
+                    insert_order_dynamodb(
+                        user_id="user123",  # Replace with actual user ID
+                        instrument_id=symbol,
+                        quantity=1,  # Default quantity
+                        price=executed_price,
+                        transaction_type="BUY",
+                        product="DELIVERY",
+                        ltp=executed_price
+                    )
+                    return True
+                else:
+                    logging.error("Failed to fetch trade details. Exiting.")
+                    return False
             else:
-                logging.error("Failed to fetch trade details. Exiting.")
+                logging.error("Order was not executed successfully. Exiting.")
                 return False
         else:
-            logging.error("Order was not executed successfully. Exiting.")
+            logging.error(f"Failed to place order. Response: {response}")
             return False
-    else:
-        logging.error(f"Failed to place order. Response: {response}")
+    except Exception as e:
+        logging.error(f"An error occurred while placing the order: {e}")
         return False
 
 def check_order_status(order_id):
