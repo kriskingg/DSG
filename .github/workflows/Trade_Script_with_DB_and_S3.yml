@@ -1,4 +1,4 @@
-name: Trade Script with DB and S3
+name: Beest ETF Modularized Script Workflow
 
 on:
   workflow_dispatch:  # Allows manual triggering
