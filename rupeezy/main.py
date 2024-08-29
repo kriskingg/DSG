@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(leve
 # Define your API base URL
 API_BASE_URL = "https://vortex.trade.rupeezy.in"
 
-def fetch_order_details(order_id):
+def fetch_order_details():
     try:
         response = requests.get(f"{API_BASE_URL}/orders?limit=10&offset=1")
         response.raise_for_status()
@@ -18,7 +18,7 @@ def fetch_order_details(order_id):
     except requests.RequestException as e:
         logging.error(f"Error fetching order details: {e}")
 
-def fetch_trade_details(order_id):
+def fetch_trade_details():
     try:
         response = requests.get(f"{API_BASE_URL}/trades?limit=10&offset=1")
         response.raise_for_status()
@@ -51,13 +51,13 @@ def place_order(symbol, token):
         logging.info(f"Order placed successfully with ID: {order_id}")
 
         # Fetch and log details from the API
-        fetch_order_details(order_id)
-        fetch_trade_details(order_id)
+        fetch_order_details()
+        fetch_trade_details()
 
         # Check order status to ensure it's executed
         if check_order_status(order_id):
             # Fetch trade details after the order is executed
-            trade_details = fetch_trade_details(order_id)
+            trade_details = fetch_trade_details()
             if trade_details:
                 executed_price = trade_details.get('trade_price')
                 logging.info(f"Order executed at price: {executed_price}")
