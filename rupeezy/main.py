@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(leve
 if __name__ == '__main__':
     # Example data for the order
     token = 19640  # Updated token for ALPHAETF
-    order_quantity = 10  # Default quantity
+    order_quantity = 20  # Default quantity
 
     order_details = {
         "exchange": "NSE_EQ",
