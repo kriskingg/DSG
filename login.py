@@ -1,18 +1,40 @@
+# Authentication & TOTP Flow (login_with_generated_totp.yml):
+# Manually Trigger or Schedule:
+
+# The workflow can be manually triggered or scheduled (cron job).
+# Checkout & Environment Setup:
+
+# The repository is checked out, and Python (version 3.8) is set up using GitHub Actions.
+# Dependencies installed: pyotp and other necessary libraries.
+# Generate TOTP:
+
+# TOTP generation using pyotp based on TOTP_SECRET_KEY.
+# The generated TOTP is saved as an environment variable.
+# Run login.py:
+
+# The login script uses the generated TOTP and environment variables (API key, client code, password, and application ID) to log in to Rupeezy.
+# Retrieves the access token.
+# Store the Access Token:
+
+# The access token is saved as an artifact (access_token.txt) and uploaded as a GitHub secret for future use.
+
+
+
 import requests
 import os
 import logging
 
 # Setup basic logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 def login_and_save_token():
     try:
         # Retrieve environment variables
         totp = os.getenv('TOTP')
-        api_key = os.getenv('YOUR_API_KEY')
-        client_code = os.getenv('YOUR_CLIENT_CODE')
-        password = os.getenv('YOUR_PASSWORD')
-        application_id = os.getenv('YOUR_APPLICATION_ID')
+        api_key = os.getenv('RUPEEZY_API_KEY')
+        client_code = os.getenv('RUPEEZY_CLIENT_CODE')
+        password = os.getenv('RUPEEZY_PASSWORD')
+        application_id = os.getenv('RUPEEZY_APPLICATION_ID')
 
         # Check if all environment variables are set
         if not all([totp, api_key, client_code, password, application_id]):

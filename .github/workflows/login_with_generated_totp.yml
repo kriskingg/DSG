@@ -54,10 +54,10 @@ jobs:
       - name: Run Login Script
         env:
           TOTP: ${{ env.TOTP }}  # Use the generated TOTP
-          YOUR_API_KEY: ${{ secrets.YOUR_API_KEY }}
-          YOUR_CLIENT_CODE: ${{ secrets.YOUR_CLIENT_CODE }}
-          YOUR_PASSWORD: ${{ secrets.YOUR_PASSWORD }}
-          YOUR_APPLICATION_ID: ${{ secrets.YOUR_APPLICATION_ID }}
+          RUPEEZY_API_KEY: ${{ secrets.RUPEEZY_API_KEY }}
+          RUPEEZY_CLIENT_CODE: ${{ secrets.RUPEEZY_CLIENT_CODE }}
+          RUPEEZY_PASSWORD: ${{ secrets.RUPEEZY_PASSWORD }}
+          RUPEEZY_APPLICATION_ID: ${{ secrets.RUPEEZY_APPLICATION_ID }}
         run: |
           python login.py
 
