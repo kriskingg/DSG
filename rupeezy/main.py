@@ -1,3 +1,15 @@
+# Beest Main Flow:
+# GitHub Actions Workflow (Trade_Script_with_DB_and_S3.yml):
+# The workflow is either manually triggered or runs on a schedule.
+# Environment setup: Python and dependencies are installed.
+# Access Token Handling: The access token is downloaded and set as an environment variable without using rupeezy/auth.py.
+# Running main.py:
+# Order Placement: The script defines the order details and places an order using trigger_order_on_rupeezy.
+# Order Status Check: The script checks the order status using check_order_status.
+# Fetch Trade Details: If the order is successful, trade details are fetched using fetch_trade_details.
+# Data Storage:
+# The order details are stored in DynamoDB using insert_order_dynamodb.
+
 import logging
 from beest_etf import trigger_order_on_rupeezy, check_order_status, fetch_trade_details
 from db_operations import insert_order_dynamodb
