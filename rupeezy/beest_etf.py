@@ -40,6 +40,9 @@ def trigger_order_on_rupeezy(order_details):
         if response_json.get('status') == 'success':
             logging.info(f"Market order successfully placed with price: {order_details['price']}")
             return response_json
+        elif response_json.get('code') == 'e-103':
+            logging.error("Market is closed. Only AMO allowed at this time.")
+            return None  # Exit without placing AMO order
         else:
             logging.error(f"Order placement failed: {response_json}")
             return None
@@ -82,7 +85,6 @@ def check_order_status(order_id, retries=10, delay=5):
                         return False
                     elif status == 'PENDING':
                         logging.info(f"Order {order_id} is still pending.")
-                        # Explicit pending status check
                         break
 
             logging.info(f"Order {order_id} is still pending. Retrying in {delay} seconds...")
