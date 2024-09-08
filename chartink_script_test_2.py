@@ -1,3 +1,24 @@
+# This chartink_script_test_2.py script is performing the following tasks:
+
+# Load environment variables:
+
+# The script uses dotenv to load environment variables, including your API key.
+# Fetch data from Chartink:
+
+# The script defines a condition to query Chartink for stock data using a POST request.
+# It retrieves the data, filters it for ALPHAETF, and logs the filtered data.
+# Place an order on Rupeezy:
+
+# If the ALPHAETF data is found, it extracts the current price.
+# It creates an order for ALPHAETF and places a BUY order on Rupeezy using the trigger_order_on_rupeezy function, which calls Rupeezy's API with the appropriate headers and token.
+# Logging and error handling:
+
+# It logs each step, including any HTTP or API errors, and provides retry logic for fetching data from Chartink.
+# In short, this script:
+
+# Fetches data from Chartink based on a condition.
+# Places a buy order on Rupeezy if the ALPHAETF data matches the condition.
+
 import os
 import requests
 from bs4 import BeautifulSoup
