@@ -12,7 +12,7 @@
 
 import requests
 import logging
-from auth import get_access_token
+import os
 from time import sleep  # Import the sleep function
 
 # Setup basic logging
@@ -21,9 +21,9 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(leve
 def trigger_order_on_rupeezy(order_details):
     """Trigger an order on Rupeezy."""
     api_url = "https://vortex.trade.rupeezy.in/orders/regular"
-    access_token = get_access_token()
+    access_token = os.getenv('RUPEEZY_ACCESS_TOKEN')  # Use the environment variable directly
     if not access_token:
-        logging.error("Access token is not available.")
+        logging.error("RUPEEZY_ACCESS_TOKEN is not available.")
         return None
 
     headers = {
@@ -54,9 +54,9 @@ def check_order_status(order_id, retries=10, delay=5):
     """Check the status of an order on Rupeezy."""
     for attempt in range(retries):
         api_url = f"https://vortex.trade.rupeezy.in/orders?limit=10&offset=1"
-        access_token = get_access_token()
+        access_token = os.getenv('RUPEEZY_ACCESS_TOKEN')  # Use the environment variable directly
         if not access_token:
-            logging.error("Access token is not available.")
+            logging.error("RUPEEZY_ACCESS_TOKEN is not available.")
             return None
 
         headers = {
@@ -99,9 +99,9 @@ def check_order_status(order_id, retries=10, delay=5):
 def fetch_trade_details(order_id):
     """Fetch the trade details for an executed order."""
     api_url = f"https://vortex.trade.rupeezy.in/trades?limit=10&offset=1"
-    access_token = get_access_token()
+    access_token = os.getenv('RUPEEZY_ACCESS_TOKEN')  # Use the environment variable directly
     if not access_token:
-        logging.error("Access token is not available.")
+        logging.error("RUPEEZY_ACCESS_TOKEN is not available.")
         return None
 
     headers = {
