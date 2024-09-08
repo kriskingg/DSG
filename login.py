@@ -54,7 +54,7 @@ def login_and_save_token():
             "totp": totp,
             "application_id": application_id
         }
-        response = requests.post(url, headers=headers, json(data))
+        response = requests.post(url, headers=headers, json=data)
         response.raise_for_status()  # Raise an exception for HTTP errors
 
         # Process the response
