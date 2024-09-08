@@ -1,3 +1,24 @@
+# Authentication & TOTP Flow (login_with_generated_totp.yml):
+# Manually Trigger or Schedule:
+
+# The workflow can be manually triggered or scheduled (cron job).
+# Checkout & Environment Setup:
+
+# The repository is checked out, and Python (version 3.8) is set up using GitHub Actions.
+# Dependencies installed: pyotp and other necessary libraries.
+# Generate TOTP:
+
+# TOTP generation using pyotp based on TOTP_SECRET_KEY.
+# The generated TOTP is saved as an environment variable.
+# Run login.py:
+
+# The login script uses the generated TOTP and environment variables (API key, client code, password, and application ID) to log in to Rupeezy.
+# Retrieves the access token.
+# Store the Access Token:
+
+# The access token is saved as an artifact (access_token.txt) and uploaded as a GitHub secret for future use.
+
+
 name: Beest ETF Modularized with AWS DynamoDB
 
 on:
@@ -31,8 +52,8 @@ jobs:
 
       - name: Set Access Token as Environment Variable
         run: |
-          ACCESS_TOKEN=$(cat ./token/access_token.txt)
-          echo "ACCESS_TOKEN=${ACCESS_TOKEN}" >> $GITHUB_ENV
+          RUPEEZY_ACCESS_TOKEN=$(cat ./token/access_token.txt)
+          echo "RUPEEZY_ACCESS_TOKEN=${RUPEEZY_ACCESS_TOKEN}" >> $GITHUB_ENV
 
       - name: Configure AWS Credentials
         run: |
@@ -44,8 +65,8 @@ jobs:
         run: |
           python rupeezy/main.py
         env:
-          YOUR_API_KEY: ${{ secrets.YOUR_API_KEY }}
-          ACCESS_TOKEN: ${{ env.ACCESS_TOKEN }}
+          RUPEEZY_API_KEY: ${{ secrets.RUPEEZY_API_KEY }}
+          RUPEEZY_ACCESS_TOKEN: ${{ env.RUPEEZY_ACCESS_TOKEN }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ap-south-1

@@ -54,17 +54,17 @@ def login_and_save_token():
             "totp": totp,
             "application_id": application_id
         }
-        response = requests.post(url, headers=headers, json=data)
+        response = requests.post(url, headers=headers, json(data))
         response.raise_for_status()  # Raise an exception for HTTP errors
 
         # Process the response
         response_data = response.json()
         access_token = response_data.get('data', {}).get('access_token')
         if access_token:
-            logging.info("ACCESS_TOKEN=%s", access_token)
+            logging.info("RUPEEZY_ACCESS_TOKEN=%s", access_token)
             # Save the access token to an environment variable
             with open(os.getenv('GITHUB_ENV'), 'a') as env_file:
-                env_file.write(f"ACCESS_TOKEN={access_token}\n")
+                env_file.write(f"RUPEEZY_ACCESS_TOKEN={access_token}\n")
             # Save the access token to a file for artifact storage
             with open('access_token.txt', 'w') as token_file:
                 token_file.write(access_token)
