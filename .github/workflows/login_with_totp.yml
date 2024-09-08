@@ -1,54 +1,54 @@
-name: Login with TOTP and Set Secret
+# name: Login with TOTP and Set Secret
 
-on:
-  workflow_dispatch:
-    inputs:
-      totp:
-        description: 'TOTP for Login'
-        required: true
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       totp:
+#         description: 'TOTP for Login'
+#         required: true
 
-jobs:
-  login_with_totp:
-    runs-on: ubuntu-latest
+# jobs:
+#   login_with_totp:
+#     runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v2
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.8'
+#       - name: Set up Python
+#         uses: actions/setup-python@v2
+#         with:
+#           python-version: '3.8'
 
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+#       - name: Install dependencies
+#         run: |
+#           pip install -r requirements.txt
 
-      - name: Run Login Script
-        env:
-          TOTP: ${{ github.event.inputs.totp }}
-          YOUR_API_KEY: ${{ secrets.YOUR_API_KEY }}
-          YOUR_CLIENT_CODE: ${{ secrets.YOUR_CLIENT_CODE }}
-          YOUR_PASSWORD: ${{ secrets.YOUR_PASSWORD }}
-          YOUR_APPLICATION_ID: ${{ secrets.YOUR_APPLICATION_ID }}
-        run: |
-          python login.py
+#       - name: Run Login Script
+#         env:
+#           TOTP: ${{ github.event.inputs.totp }}
+#           YOUR_API_KEY: ${{ secrets.YOUR_API_KEY }}
+#           YOUR_CLIENT_CODE: ${{ secrets.YOUR_CLIENT_CODE }}
+#           YOUR_PASSWORD: ${{ secrets.YOUR_PASSWORD }}
+#           YOUR_APPLICATION_ID: ${{ secrets.YOUR_APPLICATION_ID }}
+#         run: |
+#           python login.py
 
-      - name: Store Access Token as an Artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: access_token
-          path: access_token.txt
+#       - name: Store Access Token as an Artifact
+#         uses: actions/upload-artifact@v2
+#         with:
+#           name: access_token
+#           path: access_token.txt
 
-      - name: Authenticate GitHub CLI
-        env:
-          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
-        run: |
-          echo "$PAT_TOKEN" | gh auth login --with-token
+#       - name: Authenticate GitHub CLI
+#         env:
+#           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+#         run: |
+#           echo "$PAT_TOKEN" | gh auth login --with-token
 
-      - name: Set GitHub Secret
-        env:
-          ACCESS_TOKEN: $ACCESS_TOKEN  # Use the environment variable directly
-          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
-        run: |
-          gh secret set ACCESS_TOKEN --body "$ACCESS_TOKEN"
+#       - name: Set GitHub Secret
+#         env:
+#           ACCESS_TOKEN: $ACCESS_TOKEN  # Use the environment variable directly
+#           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+#         run: |
+#           gh secret set ACCESS_TOKEN --body "$ACCESS_TOKEN"
