@@ -27,7 +27,7 @@ if __name__ == '__main__':
 
     # Example data for the order
     token = 19640  # Updated token for ALPHAETF
-    order_quantity = 10  # Default quantity
+    order_quantity = 1  # Default quantity
 
     order_details = {
         "exchange": "NSE_EQ",
@@ -54,7 +54,7 @@ if __name__ == '__main__':
         # Check order status to ensure it's executed
         if check_order_status(order_id):
             # Fetch trade details after the order is executed
-            trade_details = fetch_trade_details(order_id, access_token)
+            trade_details = fetch_trade_details(order_id, access_token)  # Assuming access_token is required here
             if trade_details:
                 executed_price = trade_details.get('trade_price')
                 logging.info(f"Order executed at price: {executed_price}")
@@ -75,4 +75,3 @@ if __name__ == '__main__':
             logging.error("Order was not executed successfully. Exiting.")
     else:
         logging.error(f"Failed to place order. Response: {response}")
-
