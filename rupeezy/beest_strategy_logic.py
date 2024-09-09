@@ -76,34 +76,6 @@ def fetch_chartink_data(condition):
     logging.error("All retries failed")
     return None
 
-# Commented out order placement logic since you don't need it here
-# def trigger_order_on_rupeezy(order_details):
-#     """Trigger an order on Rupeezy."""
-#     api_url = "https://vortex.trade.rupeezy.in/orders/regular"
-#     access_token = get_access_token()
-#     if not access_token:
-#         logging.error("Access token is not available.")
-#         return
-
-#     headers = {
-#         "Authorization": f"Bearer {access_token}",
-#         "Content-Type": "application/json"
-#     }
-
-#     logging.debug(f"API URL: {api_url}")
-#     logging.debug(f"Headers: {headers}")
-#     logging.debug(f"Order Details: {order_details}")
-
-#     try:
-#         response = requests.post(api_url, json=order_details, headers=headers)
-#         response.raise_for_status()
-#         logging.debug("Order response: %s", response.json())
-#         return response.json()
-#     except requests.exceptions.HTTPError as http_err:
-#         logging.error(f"HTTP error occurred: {http_err}")
-#     except Exception as err:
-#         logging.error(f"Other error occurred: {err}")
-
 if __name__ == '__main__':
     # Fetch data from Chartink
     data = fetch_chartink_data(condition)
@@ -113,7 +85,6 @@ if __name__ == '__main__':
         
         if alpha_etf_data:
             logging.debug(f"Filtered ALPHAETF data: {alpha_etf_data}")
-            # Removed order placement logic
         else:
             logging.info("No ALPHAETF data found. No action taken.")
     else:
