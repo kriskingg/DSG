@@ -35,7 +35,7 @@ if __name__ == '__main__':
         if alpha_etf_data:
             logging.debug(f"Filtered ALPHAETF data: {alpha_etf_data}")
             # Extracting current price of ALPHAETF
-            current_price = alpha_etf_data[0]['price']
+            current_price = alpha_etf_data[0]['close']
             logging.info(f"Current price of ALPHAETF: {current_price}")
 
             # Example data for the order
