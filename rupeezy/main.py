@@ -54,8 +54,8 @@ if __name__ == '__main__':
         
         # Check order status to ensure it's executed
         if check_order_status(order_id):
-            # Fetch trade details after the order is executed
-            trade_details = fetch_trade_details(order_id, access_token)  # Passing access_token here
+            # Fetch trade details after the order is executed (without access_token)
+            trade_details = fetch_trade_details(order_id)  # Removed access_token from the call
             if trade_details:
                 executed_price = trade_details.get('trade_price')
                 logging.info(f"Order executed at price: {executed_price}")
