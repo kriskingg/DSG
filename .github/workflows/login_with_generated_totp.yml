@@ -59,13 +59,14 @@ jobs:
           RUPEEZY_PASSWORD: ${{ secrets.RUPEEZY_PASSWORD }}
           RUPEEZY_APPLICATION_ID: ${{ secrets.RUPEEZY_APPLICATION_ID }}
         run: |
-          python login.py
+          python rupeezy/login.py
 
-      - name: Store Access Token as an Artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: access_token
-          path: access_token.txt
+      # Commenting out artifact storage, as it's not needed
+      # - name: Store Access Token as an Artifact
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: access_token
+      #     path: access_token.txt
 
       - name: Authenticate GitHub CLI
         env:
