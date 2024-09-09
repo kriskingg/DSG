@@ -46,6 +46,7 @@ if __name__ == '__main__':
         "access_token": access_token  # Pass the access token with the order details
     }
     
+    # Place the order
     response = trigger_order_on_rupeezy(order_details)
     if response and response.get('status') == 'success':
         order_id = response['data'].get('orderId')
@@ -54,7 +55,7 @@ if __name__ == '__main__':
         # Check order status to ensure it's executed
         if check_order_status(order_id):
             # Fetch trade details after the order is executed
-            trade_details = fetch_trade_details(order_id, access_token)  # Assuming access_token is required here
+            trade_details = fetch_trade_details(order_id, access_token)  # Passing access_token here
             if trade_details:
                 executed_price = trade_details.get('trade_price')
                 logging.info(f"Order executed at price: {executed_price}")
