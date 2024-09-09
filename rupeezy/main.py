@@ -28,12 +28,11 @@ if __name__ == '__main__':
     # Example data for the order
     token = 19640  # Updated token for ALPHAETF
     order_quantity = 1  # Default quantity
-    instrument_symbol = "ALPHAETF"  # You need to use this key for DynamoDB
 
     order_details = {
         "exchange": "NSE_EQ",
         "token": token,
-        "symbol": instrument_symbol,
+        "symbol": "ALPHAETF",
         "transaction_type": "BUY",
         "product": "DELIVERY",
         "variety": "RL-MKT",  # Market Order
@@ -55,17 +54,16 @@ if __name__ == '__main__':
         
         # Check order status to ensure it's executed
         if check_order_status(order_id):
-            # Fetch trade details after the order is executed
+            # Fetch trade details after the order is executed (without access_token)
             trade_details = fetch_trade_details(order_id)  # Removed access_token from the call
             if trade_details:
                 executed_price = trade_details.get('trade_price')
                 logging.info(f"Order executed at price: {executed_price}")
                 
-                # Store the order details in DynamoDB, adding the missing InstrumentSymbol
+                # Store the order details in DynamoDB
                 insert_order_dynamodb(
                     user_id="user123",  # Replace with actual user ID
                     instrument_id="ALPHAETF",  # Updated to match the parameter in insert_order_dynamodb
-                    instrument_symbol=instrument_symbol,  # Adding the InstrumentSymbol key
                     quantity=order_quantity, 
                     price=executed_price, 
                     transaction_type="BUY", 
