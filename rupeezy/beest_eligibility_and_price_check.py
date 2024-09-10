@@ -1,3 +1,23 @@
+# Here’s a write-up for the script you provided:
+
+#   The script starts by setting up basic logging and loading environment variables, if needed, from a .env file.
+  
+#   It initializes a DynamoDB client to interact with the StockEligibility table in DynamoDB.
+  
+#   The script defines a function fetch_chartink_data that fetches stock data from the Chartink website using a predefined condition. It retrieves data using a session-based request and retries in case of failure.
+  
+#   The fetch_all_stocks_from_dynamodb function scans the StockEligibility table in DynamoDB to fetch all stock records.
+  
+#   The update_stock_eligibility function compares stocks retrieved from DynamoDB with the eligible instruments fetched from Chartink. For each stock, it checks whether it meets the eligibility criteria based on the Chartink data.
+  
+#   If a stock is eligible, its status is updated to "Eligible" in the DynamoDB table; otherwise, it is marked "Ineligible."
+  
+#   The script updates the EligibilityStatus and the LastUpdated timestamp for each stock in DynamoDB and logs the updates.
+      
+#   Finally, the script runs the entire eligibility check and update process and logs the outcome.
+  
+#   This script is designed to automate the process of validating stock eligibility and updating the corresponding records in DynamoDB based on data fetched from Chartink.
+
 import os
 import logging
 from time import sleep

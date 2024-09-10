@@ -1,22 +1,17 @@
-# Authentication & TOTP Flow (login_with_generated_totp.yml):
-# Manually Trigger or Schedule:
+# Here’s a clear write-up for the workflow you provided:
 
-# The workflow can be manually triggered or scheduled (cron job).
-# Checkout & Environment Setup:
+#   The workflow starts by checking out the repository and setting up a Python environment using version 3.8.
 
-# The repository is checked out, and Python (version 3.8) is set up using GitHub Actions.
-# Dependencies installed: pyotp and other necessary libraries.
-# Generate TOTP:
+#   It installs required dependencies such as pyotp, requests, pytz, boto3, bs4, and python-dotenv.
 
-# TOTP generation using pyotp based on TOTP_SECRET_KEY.
-# The generated TOTP is saved as an environment variable.
-# Run login.py:
+#   A TOTP (Time-based One-Time Password) is generated using a secret stored in GitHub secrets.
 
-# The login script uses the generated TOTP and environment variables (API key, client code, password, and application ID) to log in to Rupeezy.
-# Retrieves the access token.
-# Store the Access Token:
+#   The TOTP is then used to authenticate with the Rupeezy platform by running the login.py script, which retrieves an access token.
 
-# The access token is saved as an artifact (access_token.txt) and uploaded as a GitHub secret for future use.
+#   The access token is securely saved as a GitHub secret for future use.
+
+#   Finally, the workflow runs the beest_eligibility_and_price_check.py script, which fetches stock data from the StockEligibility table in DynamoDB and compares it against stock data fetched from Chartink based on a predefined condition. The stock eligibility status is then updated in DynamoDB accordingly.
+#   This workflow automates the process of logging in to Rupeezy, fetching and comparing stock data, and updating stock eligibility in DynamoDB.
 
 name: Login with Generated TOTP and Save Access Token to Secrets
 
