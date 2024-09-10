@@ -9,13 +9,16 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(leve
 def trigger_order_via_sdk(client, order_details):
     """Trigger an order using the SDK."""
     try:
+        # Determine the correct order variety
+        variety = Vc.VarietyTypes.REGULAR_MARKET_ORDER if order_details['variety'] == "RL-MKT" else Vc.VarietyTypes.REGULAR_LIMIT_ORDER
+        
         # Placing the order using the SDK's place_order method
         response = client.place_order(
             exchange=Vc.ExchangeTypes.NSE_EQUITY,
             token=order_details['token'],
             transaction_type=Vc.TransactionSides.BUY if order_details['transaction_type'] == "BUY" else Vc.TransactionSides.SELL,
             product=Vc.ProductTypes.DELIVERY,
-            variety=Vc.VarietyTypes.REGULAR_LIMIT_ORDER if order_details['variety'] == "RL-MKT" else Vc.VarietyTypes.STOP_MARKET_ORDER,
+            variety=variety,
             quantity=order_details['quantity'],
             price=order_details['price'],
             trigger_price=order_details['trigger_price'],
@@ -40,21 +43,20 @@ if __name__ == "__main__":
 
     # Define the order details
     order_details = {
-    "exchange": "NSE_EQ",
-    "token": 19640,
-    "symbol": "ALPHAETF",
-    "transaction_type": "BUY",
-    "product": "DELIVERY",
-    "variety": "RL-MKT",  # Change to RL-MKT for market order
-    "quantity": 1,
-    "price": 0.0,  # For market orders, price can be 0
-    "trigger_price": 0.0,
-    "disclosed_quantity": 0,
-    "validity": "DAY",
-    "validity_days": 1,
-    "is_amo": False
-}
-
+        "exchange": "NSE_EQ",
+        "token": 19640,
+        "symbol": "ALPHAETF",
+        "transaction_type": "BUY",
+        "product": "DELIVERY",
+        "variety": "RL-MKT",  # Change to RL-MKT for market order
+        "quantity": 1,
+        "price": 0.0,  # For market orders, price can be 0
+        "trigger_price": 0.0,
+        "disclosed_quantity": 0,
+        "validity": "DAY",
+        "validity_days": 1,
+        "is_amo": False
+    }
 
     # Place the order
     response = trigger_order_via_sdk(client, order_details)
