@@ -13,10 +13,9 @@
 import logging
 import os
 from beest_etf import trigger_order_on_rupeezy, check_order_status, fetch_trade_details
-from beest_eligibility_and_price_check import fetch_all_stocks_from_dynamodb
 
 # Setup basic logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levellevel)s - %(message)s')
 
 if __name__ == '__main__':
     # Retrieve the access token from environment variables
@@ -25,59 +24,46 @@ if __name__ == '__main__':
         logging.error("RUPEEZY_ACCESS_TOKEN not found in environment variables. Exiting.")
         exit(1)
 
-    # Fetch all eligible stocks from DynamoDB
-    eligible_stocks = fetch_all_stocks_from_dynamodb()
+    # Hardcoded ALPHAETF details
+    instrument_name = 'ALPHAETF'
+    token = 19640  # Hardcoded token for ALPHAETF
+    default_quantity = 1  # Hardcoded default quantity
 
-    for stock in eligible_stocks:
-        instrument_name = stock['InstrumentName']['S']
-        eligibility_status = stock['EligibilityStatus']['S']
-        default_quantity = int(stock['DefaultQuantity']['N'])  # Fetch the default quantity
+    logging.info(f"Placing order for {instrument_name} with quantity {default_quantity}")
 
-        # Hardcode token for ALPHAETF, use a different value for other instruments if needed
-        if instrument_name == 'ALPHAETF':
-            token = 19640  # Hardcoded token for ALPHAETF
-        else:
-            token = int(stock['Token']['N'])  # For other instruments, fetch from DynamoDB
+    order_details = {
+        "exchange": "NSE_EQ",
+        "token": token,  # Hardcoded token for ALPHAETF
+        "symbol": instrument_name,
+        "transaction_type": "BUY",
+        "product": "DELIVERY",
+        "variety": "RL-MKT",  # Market Order
+        "quantity": default_quantity,
+        "price": 0.00,  # Price set to 0 for market order
+        "trigger_price": 0.00,
+        "disclosed_quantity": 0,
+        "validity": "DAY",
+        "validity_days": 1,
+        "is_amo": False,
+        "access_token": access_token  # Pass the access token with the order details
+    }
 
-        # If the stock is eligible and the default quantity is greater than 0, place an order
-        if eligibility_status == 'Eligible' and default_quantity > 0:
-            logging.info(f"Placing order for {instrument_name} with quantity {default_quantity}")
+    # Place the order
+    response = trigger_order_on_rupeezy(order_details)
+    if response and response.get('status') == 'success':
+        order_id = response['data'].get('orderId')
+        logging.info(f"Order placed successfully with ID: {order_id}")
 
-            order_details = {
-                "exchange": "NSE_EQ",
-                "token": token,  # Token fetched dynamically or hardcoded
-                "symbol": instrument_name,
-                "transaction_type": "BUY",
-                "product": "DELIVERY",
-                "variety": "RL-MKT",  # Market Order
-                "quantity": default_quantity,
-                "price": 0.00,  # Price set to 0 for market order
-                "trigger_price": 0.00,
-                "disclosed_quantity": 0,
-                "validity": "DAY",
-                "validity_days": 1,
-                "is_amo": False,
-                "access_token": access_token  # Pass the access token with the order details
-            }
-
-            # Place the order
-            response = trigger_order_on_rupeezy(order_details)
-            if response and response.get('status') == 'success':
-                order_id = response['data'].get('orderId')
-                logging.info(f"Order placed successfully with ID: {order_id}")
-
-                # Check order status to ensure it's executed
-                if check_order_status(order_id):
-                    # Fetch trade details after the order is executed
-                    trade_details = fetch_trade_details(order_id)
-                    if trade_details:
-                        executed_price = trade_details.get('trade_price')
-                        logging.info(f"Order executed at price: {executed_price}")
-                    else:
-                        logging.error("Failed to fetch trade details. Exiting.")
-                else:
-                    logging.error("Order was not executed successfully. Exiting.")
+        # Check order status to ensure it's executed
+        if check_order_status(order_id):
+            # Fetch trade details after the order is executed
+            trade_details = fetch_trade_details(order_id)
+            if trade_details:
+                executed_price = trade_details.get('trade_price')
+                logging.info(f"Order executed at price: {executed_price}")
             else:
-                logging.error(f"Failed to place order for {instrument_name}. Response: {response}")
+                logging.error("Failed to fetch trade details. Exiting.")
         else:
-            logging.info(f"{instrument_name} is either not eligible or has a quantity of 0. No order placed.")
+            logging.error("Order was not executed successfully. Exiting.")
+    else:
+        logging.error(f"Failed to place order for {instrument_name}. Response: {response}")
