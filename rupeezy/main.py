@@ -13,7 +13,7 @@
 import logging
 import os
 from beest_etf import trigger_order_on_rupeezy, check_order_status, fetch_trade_details
-from beest_strategy_logic import fetch_chartink_data  # Importing from beest_strategy_logic
+from beest_eligibility_and_price_check import fetch_all_stocks_from_dynamodb
 
 # Setup basic logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -25,31 +25,27 @@ if __name__ == '__main__':
         logging.error("RUPEEZY_ACCESS_TOKEN not found in environment variables. Exiting.")
         exit(1)
 
-    # Fetch data from Chartink using the logic from beest_strategy_logic
-    data = fetch_chartink_data("( {166311} ( latest rsi(65) < latest ema(rsi(65),35) or weekly rsi(65) < weekly ema(rsi(65),35) ) )")
+    # Fetch all eligible stocks from DynamoDB
+    eligible_stocks = fetch_all_stocks_from_dynamodb()
 
-    if data:
-        # Filter for ALPHAETF
-        alpha_etf_data = [item for item in data['data'] if item['nsecode'] == 'ALPHAETF']
+    for stock in eligible_stocks:
+        instrument_name = stock['InstrumentName']['S']
+        eligibility_status = stock['EligibilityStatus']['S']
+        default_quantity = int(stock['DefaultQuantity']['N'])  # Fetch the default quantity
+        token = int(stock['Token']['N'])  # Fetch the token dynamically from the DynamoDB table
         
-        if alpha_etf_data:
-            logging.debug(f"Filtered ALPHAETF data: {alpha_etf_data}")
-            # Extracting current price of ALPHAETF
-            current_price = alpha_etf_data[0]['close']
-            logging.info(f"Current price of ALPHAETF: {current_price}")
-
-            # Example data for the order
-            token = 19640  # Token for ALPHAETF
-            order_quantity = 1  # Default quantity
+        # If the stock is eligible and the default quantity is greater than 0, place an order
+        if eligibility_status == 'Eligible' and default_quantity > 0:
+            logging.info(f"Placing order for {instrument_name} with quantity {default_quantity}")
 
             order_details = {
                 "exchange": "NSE_EQ",
-                "token": token,
-                "symbol": "ALPHAETF",
+                "token": token,  # Token fetched from DynamoDB
+                "symbol": instrument_name,
                 "transaction_type": "BUY",
                 "product": "DELIVERY",
                 "variety": "RL-MKT",  # Market Order
-                "quantity": order_quantity,
+                "quantity": default_quantity,
                 "price": 0.00,  # Price set to 0 for market order
                 "trigger_price": 0.00,
                 "disclosed_quantity": 0,
@@ -64,7 +60,7 @@ if __name__ == '__main__':
             if response and response.get('status') == 'success':
                 order_id = response['data'].get('orderId')
                 logging.info(f"Order placed successfully with ID: {order_id}")
-                
+
                 # Check order status to ensure it's executed
                 if check_order_status(order_id):
                     # Fetch trade details after the order is executed
@@ -77,8 +73,6 @@ if __name__ == '__main__':
                 else:
                     logging.error("Order was not executed successfully. Exiting.")
             else:
-                logging.error(f"Failed to place order. Response: {response}")
+                logging.error(f"Failed to place order for {instrument_name}. Response: {response}")
         else:
-            logging.info("No ALPHAETF data found. No action taken.")
-    else:
-        logging.error("Failed to fetch data from Chartink.")
+            logging.info(f"{instrument_name} is either not eligible or has a quantity of 0. No order placed.")
