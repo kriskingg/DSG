@@ -24,11 +24,11 @@ name: Beest ETF Modularized with AWS DynamoDB
 on:
   workflow_dispatch:  # Allows manual triggering
   schedule:
-    - cron: "55 3 * * 1-5"  # This cron expression schedules the job to run at 9:25 AM IST (3:55 AM UTC) on weekdays (Monday to Friday)
+    - cron: "55 3 * * 1-5"  # Schedule job to run at 9:25 AM IST (3:55 AM UTC) on weekdays (Monday to Friday)
 
 jobs:
   run-script:
-    runs-on: ubuntu-latest  # Ensure this uses GitHub-hosted runner for Linux
+    runs-on: ubuntu-latest  # GitHub-hosted runner for Linux
 
     steps:
       - name: Checkout repository
@@ -44,16 +44,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Download Access Token Artifact
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Set GH_TOKEN for GitHub CLI authentication
-        run: |
-          gh run download --repo ${{ github.repository }} --name access_token --dir ./token
+      # Step to download the access token artifact can be removed if you're loading it from Secrets.
+      # - name: Download Access Token Artifact
+      #   env:
+      #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Set GH_TOKEN for GitHub CLI authentication
+      #   run: |
+      #     gh run download --repo ${{ github.repository }} --name access_token --dir ./token
 
-      - name: Set Access Token as Environment Variable
-        run: |
-          RUPEEZY_ACCESS_TOKEN=$(cat ./token/access_token.txt)
-          echo "RUPEEZY_ACCESS_TOKEN=${RUPEEZY_ACCESS_TOKEN}" >> $GITHUB_ENV
+      # Use the access token directly from GitHub Secrets
+      - name: Set Access Token from GitHub Secrets
+        run: echo "RUPEEZY_ACCESS_TOKEN=${{ secrets.RUPEEZY_CLIENT_CODE }}" >> $GITHUB_ENV
 
       - name: Configure AWS Credentials
         run: |
@@ -66,7 +66,7 @@ jobs:
           python rupeezy/main.py
         env:
           RUPEEZY_API_KEY: ${{ secrets.RUPEEZY_API_KEY }}
-          RUPEEZY_ACCESS_TOKEN: ${{ env.RUPEEZY_ACCESS_TOKEN }}
+          RUPEEZY_ACCESS_TOKEN: ${{ env.RUPEEZY_ACCESS_TOKEN }}  # Token loaded from Secrets or Environment
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ap-south-1
