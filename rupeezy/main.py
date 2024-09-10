@@ -1,27 +1,39 @@
-# # Beest Main Flow:
-# # GitHub Actions Workflow (Trade_Script_with_DB_and_S3.yml):
-# # The workflow is either manually triggered or runs on a schedule.
-# # Environment setup: Python and dependencies are installed.
-# # Access Token Handling: The access token is downloaded and set as an environment variable without using rupeezy/auth.py.
-# # Running main.py:
-# # Order Placement: The script defines the order details and places an order using trigger_order_on_rupeezy.
-# # Order Status Check: The script checks the order status using check_order_status.
-# # Fetch Trade Details: If the order is successful, trade details are fetched using fetch_trade_details.
-# # Data Storage:
-# # The order details are stored in DynamoDB using insert_order_dynamodb.
-
 import logging
 import os
-from beest_etf import trigger_order_on_rupeezy, check_order_status, fetch_trade_details
+import requests
 
 # Setup basic logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
+def trigger_order_on_rupeezy(order_details, access_token):
+    """Trigger an order on Rupeezy."""
+    api_url = "https://vortex.trade.rupeezy.in/orders/regular"
+    
+    # Construct headers with explicit Authorization token
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+
+    logging.debug(f"Headers: {headers}")
+    logging.debug(f"Order Details: {order_details}")
+
+    try:
+        response = requests.post(api_url, json=order_details, headers=headers)
+        response.raise_for_status()
+        response_json = response.json()
+        logging.debug("Order response: %s", response_json)
+        return response_json
+    except requests.exceptions.HTTPError as http_err:
+        logging.error(f"HTTP error occurred during order placement: {http_err}")
+    except Exception as err:
+        logging.error(f"Other error occurred during order placement: {err}")
+    
+    return None
+
 if __name__ == '__main__':
     # Retrieve the access token from environment variables
     access_token = os.getenv('RUPEEZY_ACCESS_TOKEN')
-    
-    # Logging the access token for debugging purposes (you can remove this later)
     logging.debug(f"Access Token: {access_token}")
 
     if not access_token:
@@ -51,30 +63,11 @@ if __name__ == '__main__':
         "is_amo": False
     }
 
-    # Logging the order details to verify everything is correct
-    logging.debug(f"Order Details: {order_details}")
-
-    # Place the order
-    response = trigger_order_on_rupeezy(order_details)
-
-    # Check if the response is successful
-    if response:
-        logging.debug(f"Order API Response: {response}")
+    # Call the API to place the order
+    response = trigger_order_on_rupeezy(order_details, access_token)
 
     if response and response.get('status') == 'success':
         order_id = response['data'].get('orderId')
         logging.info(f"Order placed successfully with ID: {order_id}")
-
-        # Check order status to ensure it's executed
-        if check_order_status(order_id):
-            # Fetch trade details after the order is executed
-            trade_details = fetch_trade_details(order_id)
-            if trade_details:
-                executed_price = trade_details.get('trade_price')
-                logging.info(f"Order executed at price: {executed_price}")
-            else:
-                logging.error("Failed to fetch trade details. Exiting.")
-        else:
-            logging.error("Order was not executed successfully. Exiting.")
     else:
         logging.error(f"Failed to place order for {instrument_name}. Response: {response}")
