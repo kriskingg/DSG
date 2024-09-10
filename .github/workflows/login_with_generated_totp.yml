@@ -18,7 +18,7 @@
 
 # The access token is saved as an artifact (access_token.txt) and uploaded as a GitHub secret for future use.
 
-name: Login with Generated TOTP and Set Secret
+name: Login with Generated TOTP and Update Stock Eligibility
 
 on:
   workflow_dispatch:  # Allows manual triggering of the workflow from the Actions tab
@@ -26,7 +26,7 @@ on:
     - cron: '45 3 * * 1-5'  # Schedule to run at 9:15 AM IST (3:45 AM UTC) from Monday to Friday
 
 jobs:
-  login_with_totp:
+  login_and_update_eligibility:
     runs-on: ubuntu-latest
 
     steps:
@@ -61,12 +61,11 @@ jobs:
         run: |
           python rupeezy/login.py
 
-      # Commenting out artifact storage, as it's not needed
-      # - name: Store Access Token as an Artifact
-      #   uses: actions/upload-artifact@v2
-      #   with:
-      #     name: access_token
-      #     path: access_token.txt
+      - name: Run Stock Eligibility Check
+        env:
+          RUPEEZY_ACCESS_TOKEN: ${{ secrets.RUPEEZY_ACCESS_TOKEN }}  # Pass the access token to the script if needed
+        run: |
+          python beest_order_strategy.py
 
       - name: Authenticate GitHub CLI
         env:
