@@ -1,5 +1,4 @@
 import logging
-import os
 import json
 import requests
 
@@ -33,8 +32,9 @@ def trigger_order(order_details, access_token):
     return None
 
 if __name__ == "__main__":
-    access_token = os.getenv('RUPEEZY_ACCESS_TOKEN')
-    
+    # Hard-coded access token
+    access_token = "eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MjYwMjE4MDAsImlhdCI6MTcyNTk4OTUyNSwiaXNzIjoiQXN0aGFUcmFkZSIsInN1YiI6IkFJNjM2NyIsImRldmljZUlkIjoiYXBpLWNsaWVudCIsImFwcGxpY2F0aW9uSWQiOiJkZXZfM3NLNURaRFIiLCJpcCI6IjEzLjIzNS42LjIxOSIsInNjb3BlIjoicHJvZmlsZS5yZWFkLG9yZGVycy5yZWFkLG9yZGVycy53cml0ZSxob2xkaW5ncy5yZWFkLHBvc2l0aW9ucy5yZWFkLHBvc2l0aW9ucy53cml0ZSxmdW5kcy5yZWFkLHRyYWRlcy5yZWFkLG1hcmdpbnMucmVhZCxkYXRhLnJlYWQiLCJjbGllbnRfY29kZSI6IkFJNjM2NyIsInNvdXJjZSI6ImFwaV9hdXRoIiwicG9hIjp0cnVlLCJ0b2tlbl90eXBlIjoidm9ydGV4X3YzIiwib3MiOiIiLCJkZXZpY2VJbmZvIjoiIn0.fO3Vhw7izWuIh0fYMeZAs8lULCZ7iTKUcVUOKkrcES7KxOmIzdWTOIG3_yvgAZHEqVmWBAkv7xx9YWhY6nEVFBvkAbhseY1tCaZeIvF3ZGFKmOkvNEJQMWejoPhbi-yrRF9aHul1D..."
+
     if not access_token:
         logging.error("Access token is not available.")
     else:
