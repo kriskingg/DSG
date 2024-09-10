@@ -40,20 +40,21 @@ if __name__ == "__main__":
 
     # Define the order details
     order_details = {
-        "exchange": "NSE_EQ",
-        "token": 19640,
-        "symbol": "ALPHAETF",
-        "transaction_type": "BUY",
-        "product": "DELIVERY",
-        "variety": "RL-MKT",
-        "quantity": 1,
-        "price": 0.0,
-        "trigger_price": 0.0,
-        "disclosed_quantity": 0,
-        "validity": "DAY",
-        "validity_days": 1,
-        "is_amo": False
-    }
+    "exchange": "NSE_EQ",
+    "token": 19640,
+    "symbol": "ALPHAETF",
+    "transaction_type": "BUY",
+    "product": "DELIVERY",
+    "variety": "RL-MKT",  # Change to RL-MKT for market order
+    "quantity": 1,
+    "price": 0.0,  # For market orders, price can be 0
+    "trigger_price": 0.0,
+    "disclosed_quantity": 0,
+    "validity": "DAY",
+    "validity_days": 1,
+    "is_amo": False
+}
+
 
     # Place the order
     response = trigger_order_via_sdk(client, order_details)
