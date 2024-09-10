@@ -8,7 +8,7 @@ import boto3
 import pytz
 
 # Setup basic logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 # Load environment variables from .env file (if needed)
 from dotenv import load_dotenv
@@ -72,7 +72,10 @@ def update_stock_eligibility():
         # Fetch current entry from DynamoDB
         response = dynamodb.get_item(
             TableName='StockEligibility',
-            Key={'InstrumentName': {'S': instrument_name}}
+            Key={
+                'InstrumentName': {'S': instrument_name},
+                'Eligibility': {'S': eligibility}  # Adding Eligibility key
+            }
         )
 
         item_in_db = response.get('Item')
@@ -101,7 +104,10 @@ def update_stock_eligibility():
             if item_in_db:
                 dynamodb.update_item(
                     TableName='StockEligibility',
-                    Key={'InstrumentName': {'S': instrument_name}},
+                    Key={
+                        'InstrumentName': {'S': instrument_name},
+                        'Eligibility': {'S': 'Ineligible'}  # Adding Eligibility key for updating
+                    },
                     UpdateExpression="SET InitialPrice = :none, EligibilityStatus = :ineligible, LastUpdated = :lu",
                     ExpressionAttributeValues={
                         ':none': {'N': '0'},
