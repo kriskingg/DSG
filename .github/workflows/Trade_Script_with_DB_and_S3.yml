@@ -56,7 +56,7 @@ jobs:
       # Step 1: Run the eligibility check script before placing orders
       - name: Run Stock Eligibility and Price Check Script
         run: |
-          python beest_eligibility_and_price_check.py
+          python rupeezy/beest_eligibility_and_price_check.py
 
       # Step 2: Run the main order placement script
       - name: Run Main Orchestration Script
