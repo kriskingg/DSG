@@ -53,7 +53,7 @@ jobs:
 
       # Use the access token directly from GitHub Secrets
       - name: Set Access Token from GitHub Secrets
-        run: echo "RUPEEZY_ACCESS_TOKEN=${{ secrets.RUPEEZY_CLIENT_CODE }}" >> $GITHUB_ENV
+        run: echo "RUPEEZY_ACCESS_TOKEN=${{ secrets.RUPEEZY_CLIENT_TOKEN }}" >> $GITHUB_ENV
 
       - name: Configure AWS Credentials
         run: |
