@@ -1,5 +1,4 @@
 import logging
-import os
 import subprocess
 import json
 from time import sleep  # Import the sleep function
@@ -7,10 +6,11 @@ from time import sleep  # Import the sleep function
 # Setup basic logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-def trigger_order_with_curl(order_details, access_token):
+def trigger_order_with_curl(order_details):
     """Trigger an order on Rupeezy using curl."""
     api_url = "https://vortex.trade.rupeezy.in/orders/regular"
-    
+    access_token = "eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MjYwMjE4MDAsImlhdCI6MTcyNTk1Mjc4OSwiaXNzIjoiQXN0aGFUcmFkZSIsInN1YiI6IkFJNjM2NyIsImRldmljZUlkIjoiYXBpLWNsaWVudCIsImFwcGxpY2F0aW9uSWQiOiJkZXZfM3NLNURaRFIiLCJpcCI6IjEzLjIwMC4xNDEuNjUiLCJzY29wZSI6InByb2ZpbGUucmVhZCxvcmRlcnMucmVhZCxvcmRlcnMud3JpdGUsaG9sZGluZ3MucmVhZCxwb3NpdGlvbnMucmVhZCxwb3NpdGlvbnMud3JpdGUsZnVuZHMucmVhZCx0cmFkZXMucmVhZCxtYXJnaW5zLnJlYWQsZGF0YS5yZWFkIiwiY2xpZW50X2NvZGUiOiJBSTYzNjciLCJzb3VyY2UiOiJhcGlfYXV0aCIsInBvYSI6dHJ1ZSwidG9rZW5fdHlwZSI6InZvcnRleF92MyIsIm9zIjoiIiwiZGV2aWNlSW5mbyI6IiJ9.BIAyTcWgkJ0rV5XHAWvIq1Rv66LTTe3UXGwUSGielHztwiGQA3aDrlT9ddbLADX4MmkdGSrPRjNZqAJhbR456GqiFC01v71DRqMYdFdYETxdYmI5GgA5ItS7qdD9KOFRtoAL68BYxolVBtGdMAHhNBefmw1qVHyowCTZqb3fLFoJliSPRzsVTSCxWBcfsFbShnFgo8ITfBEi560wTkT_qhn8hHnP2ohE80zu48SznfbDnKLzZ50F9Rdql_rsBQCMn-xmbas2Xu_riDMNKfvaR39CNS6CuOAsSz10Sn1Svk8f1BrJ-s_jd3GxkoZsol657HFfqqvqX_rYhecOp5Ha1tMbKVzwZq51zIwNaIzA7RgbWFy4oXiFlgHgfZOOO8hxxoe1xJZujdydvbziFQmTFsRwnW1nhFK5snn-s1dhuDNYEvKFFAYnrEg_Sjatbj5ruk0LhtlW557Ef4uoyqNvYhEFNGg591X45ahU06F7Us6kWXMJ08wAafI6340c7YCc"
+
     # Construct curl command
     curl_command = [
         'curl', '--location', api_url,
@@ -109,15 +109,9 @@ def fetch_trade_details(order_id, access_token):
     return None
 
 if __name__ == '__main__':
-    # Retrieve the access token from environment variables
-    access_token = os.getenv('RUPEEZY_ACCESS_TOKEN')
-    logging.debug(f"Access Token: {access_token}")
+    # Hardcoded ALPHAETF details and token
+    access_token = "eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MjYwMjE4MDAsImlhdCI6MTcyNTk1Mjc4OSwiaXNzIjoiQXN0aGFUcmFkZSIsInN1YiI6IkFJNjM2NyIsImRldmljZUlkIjoiYXBpLWNsaWVudCIsImFwcGxpY2F0aW9uSWQiOiJkZXZfM3NLNURaRFIiLCJpcCI6IjEzLjIwMC4xNDEuNjUiLCJzY29wZSI6InByb2ZpbGUucmVhZCxvcmRlcnMucmVhZCxvcmRlcnMud3JpdGUsaG9sZGluZ3MucmVhZCxwb3NpdGlvbnMucmVhZCxwb3NpdGlvbnMud3JpdGUsZnVuZHMucmVhZCx0cmFkZXMucmVhZCxtYXJnaW5zLnJlYWQsZGF0YS5yZWFkIiwiY2xpZW50X2NvZGUiOiJBSTYzNjciLCJzb3VyY2UiOiJhcGlfYXV0aCIsInBvYSI6dHJ1ZSwidG9rZW5fdHlwZSI6InZvcnRleF92MyIsIm9zIjoiIiwiZGV2aWNlSW5mbyI6IiJ9.BIAyTcWgkJ0rV5XHAWvIq1Rv66LTTe3UXGwUSGielHztwiGQA3aDrlT9ddbLADX4MmkdGSrPRjNZqAJhbR456GqiFC01v71DRqMYdFdYETxdYmI5GgA5ItS7qdD9KOFRtoAL68BYxolVBtGdMAHhNBefmw1qVHyowCTZqb3fLFoJliSPRzsVTSCxWBcfsFbShnFgo8ITfBEi560wTkT_qhn8hHnP2ohE80zu48SznfbDnKLzZ50F9Rdql_rsBQCMn-xmbas2Xu_riDMNKfvaR39CNS6CuOAsSz10Sn1Svk8f1BrJ-s_jd3GxkoZsol657HFfqqvqX_rYhecOp5Ha1tMbKVzwZq51zIwNaIzA7RgbWFy4oXiFlgHgfZOOO8hxxoe1xJZujdydvbziFQmTFsRwnW1nhFK5snn-s1dhuDNYEvKFFAYnrEg_Sjatbj5ruk0LhtlW557Ef4uoyqNvYhEFNGg591X45ahU06F7Us6kWXMJ08wAafI6340c7YCc"
 
-    if not access_token:
-        logging.error("RUPEEZY_ACCESS_TOKEN not found in environment variables. Exiting.")
-        exit(1)
-
-    # Hardcoded ALPHAETF details
     instrument_name = 'ALPHAETF'
     token = 19640  # Hardcoded token for ALPHAETF
     default_quantity = 1  # Hardcoded default quantity
@@ -141,7 +135,7 @@ if __name__ == '__main__':
     }
 
     # Call the API using curl to place the order
-    response = trigger_order_with_curl(order_details, access_token)
+    response = trigger_order_with_curl(order_details)
 
     if response and response.get('status') == 'success':
         order_id = response['data'].get('orderId')
