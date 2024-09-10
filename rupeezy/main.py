@@ -1,57 +1,79 @@
 import logging
-import json
-import requests
+from vortex_api import AsthaTradeVortexAPI
+from vortex_api import Constants as Vc
+import pyotp
+import os
 
 # Setup basic logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-def trigger_order(order_details, access_token):
-    """Trigger an order on Rupeezy using requests."""
-    api_url = "https://vortex.trade.rupeezy.in/orders/regular"
-    headers = {
-        'Authorization': f'Bearer {access_token}', 
-        'Content-Type': 'application/json'
-    }
-    
-    logging.debug(f"API URL: {api_url}")
-    logging.debug(f"Headers: {headers}")
-    logging.debug(f"Order Details: {json.dumps(order_details, indent=4)}")
-    
+def generate_totp(secret_key):
+    """Generate a TOTP using the provided secret key."""
+    totp = pyotp.TOTP(secret_key)
+    return totp.now()
+
+def trigger_order_via_sdk(client, order_details):
+    """Trigger an order on Rupeezy using the SDK."""
     try:
-        response = requests.post(api_url, headers=headers, json=order_details)
-        logging.debug(f"Response Status Code: {response.status_code}")
-        logging.debug(f"Response JSON: {response.json()}")
-        
-        if response.status_code == 200:
-            return response.json()
-        else:
-            logging.error(f"Failed to place order. Status code: {response.status_code}")
+        response = client.place_order(
+            exchange=Vc.ExchangeTypes.NSE_EQUITY,
+            token=order_details['token'],
+            transaction_type=Vc.TransactionSides.BUY if order_details['transaction_type'] == "BUY" else Vc.TransactionSides.SELL,
+            product=Vc.ProductTypes.DELIVERY,
+            variety=Vc.VarietyTypes.REGULAR_LIMIT_ORDER if order_details['variety'] == "RL-MKT" else Vc.VarietyTypes.MARKET_ORDER,
+            quantity=order_details['quantity'],
+            price=order_details['price'],
+            trigger_price=order_details['trigger_price'],
+            disclosed_quantity=order_details['disclosed_quantity'],
+            validity=Vc.ValidityTypes.FULL_DAY if order_details['validity'] == "DAY" else Vc.ValidityTypes.IMMEDIATE
+        )
+        logging.debug(f"Order Response: {response}")
+        return response
     except Exception as e:
         logging.error(f"Error during order placement: {str(e)}")
-    
-    return None
+        return None
 
 if __name__ == "__main__":
-    # Hard-coded access token
-    access_token = "eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MjYwMjE4MDAsImlhdCI6MTcyNTk4OTUyNSwiaXNzIjoiQXN0aGFUcmFkZSIsInN1YiI6IkFJNjM2NyIsImRldmljZUlkIjoiYXBpLWNsaWVudCIsImFwcGxpY2F0aW9uSWQiOiJkZXZfM3NLNURaRFIiLCJpcCI6IjEzLjIzNS42LjIxOSIsInNjb3BlIjoicHJvZmlsZS5yZWFkLG9yZGVycy5yZWFkLG9yZGVycy53cml0ZSxob2xkaW5ncy5yZWFkLHBvc2l0aW9ucy5yZWFkLHBvc2l0aW9ucy53cml0ZSxmdW5kcy5yZWFkLHRyYWRlcy5yZWFkLG1hcmdpbnMucmVhZCxkYXRhLnJlYWQiLCJjbGllbnRfY29kZSI6IkFJNjM2NyIsInNvdXJjZSI6ImFwaV9hdXRoIiwicG9hIjp0cnVlLCJ0b2tlbl90eXBlIjoidm9ydGV4X3YzIiwib3MiOiIiLCJkZXZpY2VJbmZvIjoiIn0.fO3Vhw7izWuIh0fYMeZAs8lULCZ7iTKUcVUOKkrcES7KxOmIzdWTOIG3_yvgAZHEqVmWBAkv7xx9YWhY6nEVFBvkAbhseY1tCaZeIvF3ZGFKmOkvNEJQMWejoPhbi-yrRF9aHul1D..."
+    # Retrieve necessary secrets from environment variables
+    api_secret = os.getenv('RUPEEZY_API_KEY')  # API Key from GitHub Secrets
+    application_id = os.getenv('RUPEEZY_APPLICATION_ID')  # Application ID from GitHub Secrets
+    client_code = os.getenv('RUPEEZY_CLIENT_CODE')  # Client Code from GitHub Secrets
+    client_password = os.getenv('RUPEEZY_PASSWORD')  # Password from GitHub Secrets
+    totp_secret_key = os.getenv('TOTP_SECRET_KEY')  # TOTP Secret Key from GitHub Secrets
 
-    if not access_token:
-        logging.error("Access token is not available.")
+    # Generate the TOTP
+    totp = generate_totp(totp_secret_key)
+    
+    # Create a client instance
+    client = AsthaTradeVortexAPI(api_secret, application_id)
+    
+    # Login using the SDK and TOTP
+    try:
+        client.login(client_code, client_password, totp)
+    except Exception as e:
+        logging.error(f"Login failed: {str(e)}")
+        exit(1)
+
+    # Define the order details
+    order_details = {
+        "exchange": "NSE_EQ",
+        "token": 19640,
+        "symbol": "ALPHAETF",
+        "transaction_type": "BUY",
+        "product": "DELIVERY",
+        "variety": "RL-MKT",
+        "quantity": 1,
+        "price": 0.0,
+        "trigger_price": 0.0,
+        "disclosed_quantity": 0,
+        "validity": "DAY",
+        "validity_days": 1,
+        "is_amo": False
+    }
+
+    # Place the order
+    response = trigger_order_via_sdk(client, order_details)
+    if response:
+        logging.info(f"Order placed successfully: {response}")
     else:
-        logging.debug(f"Access Token (last 4 characters): {access_token[-4:]}")
-        order_details = {
-            "exchange": "NSE_EQ",
-            "token": 19640,
-            "symbol": "ALPHAETF",
-            "transaction_type": "BUY",
-            "product": "DELIVERY",
-            "variety": "RL-MKT",
-            "quantity": 1,
-            "price": 0.0,
-            "trigger_price": 0.0,
-            "disclosed_quantity": 0,
-            "validity": "DAY",
-            "validity_days": 1,
-            "is_amo": False
-        }
-        trigger_order(order_details, access_token)
+        logging.error("Order placement failed")
