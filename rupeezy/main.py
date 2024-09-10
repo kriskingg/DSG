@@ -1,35 +1,9 @@
 import logging
 import os
-import requests
+from beest_etf import trigger_order_on_rupeezy
 
 # Setup basic logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-def trigger_order_on_rupeezy(order_details, access_token):
-    """Trigger an order on Rupeezy."""
-    api_url = "https://vortex.trade.rupeezy.in/orders/regular"
-    
-    # Construct headers with explicit Authorization token
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json"
-    }
-
-    logging.debug(f"Headers: {headers}")
-    logging.debug(f"Order Details: {order_details}")
-
-    try:
-        response = requests.post(api_url, json=order_details, headers=headers)
-        response.raise_for_status()
-        response_json = response.json()
-        logging.debug("Order response: %s", response_json)
-        return response_json
-    except requests.exceptions.HTTPError as http_err:
-        logging.error(f"HTTP error occurred during order placement: {http_err}")
-    except Exception as err:
-        logging.error(f"Other error occurred during order placement: {err}")
-    
-    return None
 
 if __name__ == '__main__':
     # Retrieve the access token from environment variables

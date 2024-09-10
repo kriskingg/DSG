@@ -13,118 +13,77 @@
 import requests
 import logging
 import os
-from time import sleep  # Import the sleep function
 
 # Setup basic logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-def trigger_order_on_rupeezy(order_details):
+def trigger_order_on_rupeezy(order_details, access_token):
     """Trigger an order on Rupeezy."""
     api_url = "https://vortex.trade.rupeezy.in/orders/regular"
-    access_token = os.getenv('RUPEEZY_ACCESS_TOKEN')  # Use the environment variable directly
-    if not access_token:
-        logging.error("RUPEEZY_ACCESS_TOKEN is not available.")
-        return None
-
+    
+    # Construct headers with explicit Authorization token
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json"
     }
 
+    # Log the headers and order details before making the request
+    logging.debug(f"Headers: {headers}")
+    logging.debug(f"Order Details: {order_details}")
+
     try:
+        # Make the POST request to place the order
         response = requests.post(api_url, json=order_details, headers=headers)
         response.raise_for_status()
+        
+        # Log and return the response JSON
         response_json = response.json()
-        logging.debug("Order response: %s", response_json)
-
-        if response_json.get('status') == 'success':
-            logging.info(f"Market order successfully placed with price: {order_details['price']}")
-            return response_json
-        elif response_json.get('code') == 'e-103':
-            logging.error("Market is closed. Only AMO allowed at this time.")
-            return None  # Exit without placing AMO order
-        else:
-            logging.error(f"Order placement failed: {response_json}")
-            return None
+        logging.debug(f"Order Response: {response_json}")
+        return response_json
     except requests.exceptions.HTTPError as http_err:
         logging.error(f"HTTP error occurred during order placement: {http_err}")
     except Exception as err:
         logging.error(f"Other error occurred during order placement: {err}")
-
+    
     return None
 
-def check_order_status(order_id, retries=10, delay=5):
-    """Check the status of an order on Rupeezy."""
-    for attempt in range(retries):
-        api_url = f"https://vortex.trade.rupeezy.in/orders?limit=10&offset=1"
-        access_token = os.getenv('RUPEEZY_ACCESS_TOKEN')  # Use the environment variable directly
-        if not access_token:
-            logging.error("RUPEEZY_ACCESS_TOKEN is not available.")
-            return None
+if __name__ == '__main__':
+    # Retrieve the access token from environment variables
+    access_token = os.getenv('RUPEEZY_ACCESS_TOKEN')
+    logging.debug(f"Access Token: {access_token}")
 
-        headers = {
-            "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json"
-        }
-
-        try:
-            response = requests.get(api_url, headers=headers)
-            response.raise_for_status()
-            response_json = response.json()
-            logging.debug("Order status response: %s", response_json)
-
-            orders = response_json.get('orders', [])
-            for order in orders:
-                if order.get('order_id') == order_id:
-                    status = order.get('status')
-                    if status == 'EXECUTED':
-                        logging.info(f"Order {order_id} has been executed.")
-                        return True
-                    elif status in ['REJECTED', 'ADMINREJECT']:
-                        logging.error(f"Order {order_id} was rejected: {order.get('error_reason', 'Unknown reason')}")
-                        return False
-                    elif status == 'PENDING':
-                        logging.info(f"Order {order_id} is still pending.")
-                        break
-
-            logging.info(f"Order {order_id} is still pending. Retrying in {delay} seconds...")
-        except requests.exceptions.HTTPError as http_err:
-            logging.error(f"HTTP error occurred while checking order status: {http_err}")
-        except Exception as err:
-            logging.error(f"Other error occurred while checking order status: {err}")
-
-        sleep(delay)
-
-    logging.error(f"Order {order_id} could not be confirmed after {retries} retries.")
-    return False
-
-def fetch_trade_details(order_id):
-    """Fetch the trade details for an executed order."""
-    api_url = f"https://vortex.trade.rupeezy.in/trades?limit=10&offset=1"
-    access_token = os.getenv('RUPEEZY_ACCESS_TOKEN')  # Use the environment variable directly
     if not access_token:
-        logging.error("RUPEEZY_ACCESS_TOKEN is not available.")
-        return None
+        logging.error("RUPEEZY_ACCESS_TOKEN not found in environment variables. Exiting.")
+        exit(1)
 
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json"
+    # Hardcoded ALPHAETF details
+    instrument_name = 'ALPHAETF'
+    token = 19640  # Hardcoded token for ALPHAETF
+    default_quantity = 1  # Hardcoded default quantity
+
+    logging.info(f"Placing order for {instrument_name} with quantity {default_quantity}")
+
+    order_details = {
+        "exchange": "NSE_EQ",
+        "token": token,  # Hardcoded token for ALPHAETF
+        "symbol": instrument_name,
+        "transaction_type": "BUY",
+        "product": "DELIVERY",
+        "variety": "RL-MKT",  # Market Order
+        "quantity": default_quantity,
+        "price": 0.00,  # Price set to 0 for market order
+        "trigger_price": 0.00,
+        "disclosed_quantity": 0,
+        "validity": "DAY",
+        "validity_days": 1,
+        "is_amo": False
     }
 
-    try:
-        response = requests.get(api_url, headers=headers)
-        response.raise_for_status()
-        response_json = response.json()
-        logging.debug("Trade details response: %s", response_json)
+    # Call the API to place the order
+    response = trigger_order_on_rupeezy(order_details, access_token)
 
-        trades = response_json.get('trades', [])
-        for trade in trades:
-            if trade.get('order_id') == order_id:
-                return trade
-
-    except requests.exceptions.HTTPError as http_err:
-        logging.error(f"HTTP error occurred while fetching trade details: {http_err}")
-    except Exception as err:
-        logging.error(f"Other error occurred while fetching trade details: {err}")
-
-    return None
+    if response and response.get('status') == 'success':
+        order_id = response['data'].get('orderId')
+        logging.info(f"Order placed successfully with ID: {order_id}")
+    else:
+        logging.error(f"Failed to place order for {instrument_name}. Response: {response}")
