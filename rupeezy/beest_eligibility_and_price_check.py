@@ -1,11 +1,11 @@
 import os
-import requests
-from bs4 import BeautifulSoup
 import logging
 from time import sleep
 from datetime import datetime
 import boto3
 import pytz
+import requests
+from bs4 import BeautifulSoup
 
 # Setup basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -22,7 +22,7 @@ Charting_Link = "https://chartink.com/screener/"
 Charting_url = 'https://chartink.com/screener/process'
 condition = "( {166311} ( latest rsi(65) < latest ema(rsi(65),35) or weekly rsi(65) < weekly ema(rsi(65),35) ) )"
 
-# Fetch data from Chartink based on the given condition
+# Fetch data from Chartink based on the given condition (minimal logging)
 def fetch_chartink_data(condition):
     """Fetch data from Chartink based on the given condition."""
     retries = 3
@@ -30,26 +30,17 @@ def fetch_chartink_data(condition):
         try:
             with requests.Session() as s:
                 s.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
-                logging.debug("Headers: {}".format(s.headers))
                 r = s.get(Charting_Link)
-                logging.debug("GET request to Charting_Link status code: {}".format(r.status_code))
                 soup = BeautifulSoup(r.text, "html.parser")
                 csrf_token = soup.select_one("[name='csrf-token']")['content']
                 s.headers.update({'x-csrf-token': csrf_token})
-                logging.debug("CSRF Token: {}".format(csrf_token))
-                logging.debug("Scan Condition: {}".format(condition))
                 response = s.post(Charting_url, data={'scan_clause': condition})
-                logging.debug("POST request to Charting_url status code: {}".format(response.status_code))
-                response_json = response.json()
-                logging.debug("Response JSON: {}".format(response_json))
                 if response.status_code == 200:
-                    return response_json
-                else:
-                    logging.error("Failed to fetch data with status code: {}".format(response.status_code))
+                    return response.json()
         except Exception as e:
-            logging.error("Exception during data fetch: {}".format(str(e)))
+            logging.error("Exception during data fetch from Chartink: {}".format(str(e)))
         sleep(10)  # wait before retrying
-    logging.error("All retries failed")
+    logging.error("All retries to fetch data from Chartink failed")
     return None
 
 # Function to update stock eligibility and reset ineligible stocks
@@ -58,7 +49,6 @@ def update_stock_eligibility():
     current_time = now.strftime("%Y-%m-%dT%H:%M:%S")
     
     # Fetch data from Chartink
-    logging.info("Fetching data from Chartink...")
     data = fetch_chartink_data(condition)
     
     if not data:
@@ -70,7 +60,7 @@ def update_stock_eligibility():
         current_price = float(item['close'])
         eligibility = 'Eligible' if item['nsecode'] == 'ALPHAETF' else 'Ineligible'
 
-        # Fetch current entry from DynamoDB
+        # AWS-related logging starts here
         logging.info(f"Checking if {instrument_name} exists in the StockEligibility table with Eligibility = {eligibility}.")
         try:
             response = dynamodb.get_item(
@@ -80,6 +70,7 @@ def update_stock_eligibility():
                     'Eligibility': {'S': eligibility}
                 }
             )
+            logging.info(f"Successfully fetched item for {instrument_name} from DynamoDB.")
         except Exception as e:
             logging.error(f"Error fetching item from DynamoDB: {e}")
             continue
@@ -92,7 +83,6 @@ def update_stock_eligibility():
                 logging.info(f"Stock {instrument_name} already exists in the table.")
                 logging.info(f"Old Price: {initial_price}, New Price: {current_price}")
                 
-                # Update the current price and time
                 if initial_price != current_price:
                     logging.info(f"Updating price for {instrument_name} in StockEligibility table.")
                     try:
@@ -108,14 +98,13 @@ def update_stock_eligibility():
                                 ':lu': {'S': current_time}
                             }
                         )
-                        logging.info(f"Price for {instrument_name} updated successfully.")
+                        logging.info(f"Successfully updated price for {instrument_name} to {current_price}.")
                     except Exception as e:
                         logging.error(f"Error updating item in DynamoDB: {e}")
                 else:
-                    logging.info(f"Price for {instrument_name} is the same. No update needed.")
+                    logging.info(f"Price for {instrument_name} is unchanged. No update needed.")
             else:
                 logging.info(f"Stock {instrument_name} not found in the table. Adding it now.")
-                # Insert new entry if stock is eligible for the first time
                 try:
                     dynamodb.put_item(
                         TableName='StockEligibility',
@@ -127,14 +116,13 @@ def update_stock_eligibility():
                             'LastUpdated': {'S': current_time}
                         }
                     )
-                    logging.info(f"Stock {instrument_name} added successfully.")
+                    logging.info(f"Successfully added {instrument_name} with price {current_price}.")
                 except Exception as e:
                     logging.error(f"Error adding item to DynamoDB: {e}")
 
         elif eligibility == 'Ineligible':
             if item_in_db:
                 logging.info(f"Stock {instrument_name} is ineligible. Resetting initial price and status.")
-                # Reset the stock details in DynamoDB if ineligible
                 try:
                     dynamodb.update_item(
                         TableName='StockEligibility',
@@ -149,7 +137,7 @@ def update_stock_eligibility():
                             ':lu': {'S': current_time}
                         }
                     )
-                    logging.info(f"Stock {instrument_name} has been reset to ineligible.")
+                    logging.info(f"Successfully reset stock {instrument_name} as ineligible.")
                 except Exception as e:
                     logging.error(f"Error resetting ineligible stock in DynamoDB: {e}")
             else:
