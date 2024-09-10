@@ -76,7 +76,7 @@ def fetch_chartink_data(condition):
     logging.error("All retries failed")
     return None
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
     # Fetch data from Chartink
     data = fetch_chartink_data(condition)
 
