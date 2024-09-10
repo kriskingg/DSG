@@ -40,7 +40,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pyotp requests
+          pip install pyotp requests pytz
 
       - name: Generate TOTP
         env:
@@ -77,5 +77,5 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           # RUPEEZY_ACCESS_TOKEN: ${{ env.TOKEN }}  # Use the token directly
         run: |
-          pip install boto3
+          pip install boto3 pytz
           python rupeezy/beest_eligibility_and_price_check.py
