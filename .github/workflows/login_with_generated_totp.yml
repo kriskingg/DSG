@@ -40,7 +40,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pyotp requests
+          pip install pyotp requests cryptography
 
       - name: Generate TOTP
         env:
@@ -61,16 +61,35 @@ jobs:
           token=$(python rupeezy/login.py)
           echo "TOKEN=$token" >> $GITHUB_ENV  # Save token for future steps
 
-      - name: Update GitHub Secret with Access Token
+      - name: Fetch GitHub Public Key for Encryption
+        id: fetch_key
         env:
-          GH_TOKEN: ${{ secrets.PAT_TOKEN }}  # Use PAT_TOKEN instead of GITHUB_PAT
-          TOKEN: ${{ env.TOKEN }}
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          curl -H "Authorization: token $GH_TOKEN" \
+          https://api.github.com/repos/${{ github.repository }}/actions/secrets/public-key \
+          > public_key.json
+          cat public_key.json
+
+      - name: Encrypt Access Token
+        id: encrypt_token
+        run: |
+          pub_key=$(cat public_key.json | jq -r '.key')
+          key_id=$(cat public_key.json | jq -r '.key_id')
+          echo "KEY_ID=$key_id" >> $GITHUB_ENV
+          echo "ENCRYPTED_TOKEN=$(echo -n "$TOKEN" | openssl rsautl -encrypt -pubin -inkey <(echo "$pub_key" | openssl base64 -d) | openssl base64 -e)" >> $GITHUB_ENV
+
+      - name: Update GitHub Secret with Encrypted Access Token
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+          ENCRYPTED_TOKEN: ${{ env.ENCRYPTED_TOKEN }}
+          KEY_ID: ${{ env.KEY_ID }}
         run: |
           curl -X PUT \
           -H "Authorization: token $GH_TOKEN" \
           -H "Accept: application/vnd.github.v3+json" \
           https://api.github.com/repos/${{ github.repository }}/actions/secrets/RUPEEZY_ACCESS_TOKEN \
-          -d '{"encrypted_value": "'"$TOKEN"'", "key_id": "ENCRYPTION_KEY_ID"}'
+          -d '{"encrypted_value": "'"$ENCRYPTED_TOKEN"'", "key_id": "'"$KEY_ID"'"}'
 
       - name: Run Stock Eligibility and Price Check
         env:
@@ -78,4 +97,5 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           RUPEEZY_ACCESS_TOKEN: ${{ env.TOKEN }}  # Use the token directly
         run: |
+          pip install boto3
           python rupeezy/beest_eligibility_and_price_check.py
