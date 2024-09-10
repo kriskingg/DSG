@@ -4,3 +4,4 @@ pandas
 pytz
 python-dotenv
 boto3
+vortex_api
