@@ -5,7 +5,7 @@ import json
 from time import sleep  # Import the sleep function
 
 # Setup basic logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levellevel)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 def trigger_order_with_curl(order_details, access_token):
     """Trigger an order on Rupeezy using curl."""
