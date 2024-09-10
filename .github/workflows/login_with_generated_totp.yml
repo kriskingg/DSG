@@ -63,7 +63,7 @@ jobs:
 
       - name: Update GitHub Secret with Access Token
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_PAT }}  # Your PAT token needs to be set in GitHub secrets
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}  # Use PAT_TOKEN instead of GITHUB_PAT
           TOKEN: ${{ env.TOKEN }}
         run: |
           curl -X PUT \
