@@ -65,30 +65,18 @@ jobs:
         run: |
           python rupeezy/login.py
 
-      - name: Save Access Token as Artifact
-        if: success()
-        uses: actions/upload-artifact@v3  # Updated to version 3
+      - name: Upload Access Token Artifact
+        uses: actions/upload-artifact@v3
         with:
           name: access_token
-          path: access_token.txt
+          path: access_token.txt  # Upload access_token.txt as an artifact
 
-      - name: Authenticate GitHub CLI
-        env:
-          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
-        run: |
-          echo "$PAT_TOKEN" | gh auth login --with-token
+      - name: Download Access Token Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: access_token
+          path: ./token
 
-      - name: Set GitHub Secret
-        env:
-          RUPEEZY_ACCESS_TOKEN: ${{ env.RUPEEZY_ACCESS_TOKEN }}  # Use the access token fetched earlier
-          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+      - name: Print Access Token from access_token.txt
         run: |
-          gh secret set RUPEEZY_ACCESS_TOKEN --body "$RUPEEZY_ACCESS_TOKEN"
-
-      - name: Run Stock Eligibility and Price Check
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          RUPEEZY_ACCESS_TOKEN: ${{ secrets.RUPEEZY_ACCESS_TOKEN }}
-        run: |
-          python rupeezy/beest_eligibility_and_price_check.py
+          cat ./token/access_token.txt  # Display the token from the file in the logs
