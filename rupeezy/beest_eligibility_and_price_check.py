@@ -43,105 +43,53 @@ def fetch_chartink_data(condition):
     logging.error("All retries to fetch data from Chartink failed")
     return None
 
-# Function to update stock eligibility and reset ineligible stocks
+# Fetch all stocks from DynamoDB StockEligibility table
+def fetch_all_stocks_from_dynamodb():
+    try:
+        response = dynamodb.scan(TableName='StockEligibility')
+        return response['Items']
+    except Exception as e:
+        logging.error(f"Error fetching items from DynamoDB: {e}")
+        return []
+
+# Function to update stock eligibility
 def update_stock_eligibility():
     now = datetime.now(pytz.timezone('Asia/Kolkata'))
     current_time = now.strftime("%Y-%m-%dT%H:%M:%S")
-    
+
     # Fetch data from Chartink
-    data = fetch_chartink_data(condition)
-    
-    if not data:
+    chartink_data = fetch_chartink_data(condition)
+    if not chartink_data:
         logging.error("No data fetched from Chartink.")
         return
 
-    for item in data['data']:
-        instrument_name = item['nsecode']
-        current_price = float(item['close'])
-        eligibility = 'Eligible' if item['nsecode'] == 'ALPHAETF' else 'Ineligible'
+    # Create a set of eligible instruments from Chartink
+    eligible_instruments = {item['nsecode'] for item in chartink_data['data']}
+    
+    # Fetch all stocks from DynamoDB
+    all_stocks = fetch_all_stocks_from_dynamodb()
+    
+    for stock in all_stocks:
+        instrument_name = stock['InstrumentName']['S']
+        is_eligible = instrument_name in eligible_instruments
 
-        # AWS-related logging starts here
-        logging.info(f"Checking if {instrument_name} exists in the StockEligibility table with Eligibility = {eligibility}.")
+        eligibility_status = 'Eligible' if is_eligible else 'Ineligible'
+        current_price = stock.get('InitialPrice', {'N': '0'})['N']  # Use the existing price from DynamoDB or set default
+        
+        logging.info(f"Updating {instrument_name} as {eligibility_status} in DynamoDB.")
         try:
-            response = dynamodb.get_item(
+            dynamodb.update_item(
                 TableName='StockEligibility',
-                Key={
-                    'InstrumentName': {'S': instrument_name},
-                    'Eligibility': {'S': eligibility}
+                Key={'InstrumentName': {'S': instrument_name}},
+                UpdateExpression="SET EligibilityStatus = :elig, LastUpdated = :lu",
+                ExpressionAttributeValues={
+                    ':elig': {'S': eligibility_status},
+                    ':lu': {'S': current_time}
                 }
             )
-            logging.info(f"Successfully fetched item for {instrument_name} from DynamoDB.")
+            logging.info(f"Successfully updated {instrument_name} to {eligibility_status}.")
         except Exception as e:
-            logging.error(f"Error fetching item from DynamoDB: {e}")
-            continue
-
-        item_in_db = response.get('Item')
-
-        if eligibility == 'Eligible':
-            if item_in_db:
-                initial_price = float(item_in_db['InitialPrice']['N'])
-                logging.info(f"Stock {instrument_name} already exists in the table.")
-                logging.info(f"Old Price: {initial_price}, New Price: {current_price}")
-                
-                if initial_price != current_price:
-                    logging.info(f"Updating price for {instrument_name} in StockEligibility table.")
-                    try:
-                        dynamodb.update_item(
-                            TableName='StockEligibility',
-                            Key={
-                                'InstrumentName': {'S': instrument_name},
-                                'Eligibility': {'S': 'Eligible'}
-                            },
-                            UpdateExpression="SET InitialPrice = :new_price, LastUpdated = :lu",
-                            ExpressionAttributeValues={
-                                ':new_price': {'N': str(current_price)},
-                                ':lu': {'S': current_time}
-                            }
-                        )
-                        logging.info(f"Successfully updated price for {instrument_name} to {current_price}.")
-                    except Exception as e:
-                        logging.error(f"Error updating item in DynamoDB: {e}")
-                else:
-                    logging.info(f"Price for {instrument_name} is unchanged. No update needed.")
-            else:
-                logging.info(f"Stock {instrument_name} not found in the table. Adding it now.")
-                try:
-                    dynamodb.put_item(
-                        TableName='StockEligibility',
-                        Item={
-                            'InstrumentName': {'S': instrument_name},
-                            'Eligibility': {'S': 'Eligible'},
-                            'InitialPrice': {'N': str(current_price)},
-                            'DateRegistered': {'S': current_time},
-                            'LastUpdated': {'S': current_time}
-                        }
-                    )
-                    logging.info(f"Successfully added {instrument_name} with price {current_price}.")
-                except Exception as e:
-                    logging.error(f"Error adding item to DynamoDB: {e}")
-
-        elif eligibility == 'Ineligible':
-            if item_in_db:
-                logging.info(f"Stock {instrument_name} is ineligible. Resetting initial price and status.")
-                try:
-                    dynamodb.update_item(
-                        TableName='StockEligibility',
-                        Key={
-                            'InstrumentName': {'S': instrument_name},
-                            'Eligibility': {'S': 'Ineligible'}
-                        },
-                        UpdateExpression="SET InitialPrice = :none, EligibilityStatus = :ineligible, LastUpdated = :lu",
-                        ExpressionAttributeValues={
-                            ':none': {'N': '0'},
-                            ':ineligible': {'S': 'Ineligible'},
-                            ':lu': {'S': current_time}
-                        }
-                    )
-                    logging.info(f"Successfully reset stock {instrument_name} as ineligible.")
-                except Exception as e:
-                    logging.error(f"Error resetting ineligible stock in DynamoDB: {e}")
-            else:
-                logging.info(f"Stock {instrument_name} is not present in the table for reset.")
+            logging.error(f"Error updating {instrument_name} in DynamoDB: {e}")
 
 if __name__ == "__main__":
     logging.info("Starting stock eligibility update process...")
