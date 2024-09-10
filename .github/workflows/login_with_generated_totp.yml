@@ -79,4 +79,15 @@ jobs:
 
       - name: Print Access Token from access_token.txt
         run: |
+          echo "Access token from file:"
           cat ./token/access_token.txt  # Display the token from the file in the logs
+
+      # Continue with other steps after ensuring the token is printed
+      - name: Run Stock Eligibility and Price Check
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          # Use the token from the file directly, not the environment variable
+        run: |
+          RUPEEZY_ACCESS_TOKEN=$(cat ./token/access_token.txt)
+          python rupeezy/beest_eligibility_and_price_check.py
