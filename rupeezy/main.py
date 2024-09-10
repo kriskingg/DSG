@@ -38,7 +38,7 @@ if __name__ == "__main__":
     if not access_token:
         logging.error("Access token is not available.")
     else:
-        logging.debug(f"Access Token: {access_token[:10]}...")  # Print only part of the token for security reasons
+        logging.debug(f"Access Token (last 4 characters): {access_token[-4:]}")
         order_details = {
             "exchange": "NSE_EQ",
             "token": 19640,
