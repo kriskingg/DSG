@@ -5,7 +5,7 @@ from vortex_api import AsthaTradeVortexAPI
 from vortex_api import Constants as Vc
 
 # Setup basic logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levellevel)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 # Initialize DynamoDB client
 dynamodb = boto3.client('dynamodb', region_name='ap-south-1')
