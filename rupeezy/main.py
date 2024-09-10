@@ -32,15 +32,20 @@ if __name__ == '__main__':
         instrument_name = stock['InstrumentName']['S']
         eligibility_status = stock['EligibilityStatus']['S']
         default_quantity = int(stock['DefaultQuantity']['N'])  # Fetch the default quantity
-        token = int(stock['Token']['N'])  # Fetch the token dynamically from the DynamoDB table
-        
+
+        # Hardcode token for ALPHAETF, use a different value for other instruments if needed
+        if instrument_name == 'ALPHAETF':
+            token = 19640  # Hardcoded token for ALPHAETF
+        else:
+            token = int(stock['Token']['N'])  # For other instruments, fetch from DynamoDB
+
         # If the stock is eligible and the default quantity is greater than 0, place an order
         if eligibility_status == 'Eligible' and default_quantity > 0:
             logging.info(f"Placing order for {instrument_name} with quantity {default_quantity}")
 
             order_details = {
                 "exchange": "NSE_EQ",
-                "token": token,  # Token fetched from DynamoDB
+                "token": token,  # Token fetched dynamically or hardcoded
                 "symbol": instrument_name,
                 "transaction_type": "BUY",
                 "product": "DELIVERY",
