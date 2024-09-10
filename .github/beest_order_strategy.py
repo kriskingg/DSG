@@ -75,5 +75,5 @@ def get_current_price(instrument_name):
     # You should replace this with actual stock price retrieval logic (e.g., API call)
     return 28.35  # Placeholder value for ALPHAETF
 
-if __name__ == "__main__":
-    update_stock_eligibility()
+# if __name__ == "__main__":
+#     update_stock_eligibility()
