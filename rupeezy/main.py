@@ -1,42 +1,40 @@
 import logging
 import os
-import subprocess
 import json
-from time import sleep  # Import the sleep function
+from time import sleep
+import requests  # Import requests for making HTTP requests
 
 # Setup basic logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-def trigger_order_with_curl(order_details, access_token):
-    """Trigger an order on Rupeezy using curl."""
+def trigger_order_with_requests(order_details, access_token):
+    """Trigger an order on Rupeezy using requests."""
     api_url = "https://vortex.trade.rupeezy.in/orders/regular"
     
-    # Construct curl command
-    curl_command = [
-        'curl', '--location', api_url,
-        '--header', f'Authorization: Bearer {access_token}',
-        '--header', 'Content-Type: application/json',
-        '--data', json.dumps(order_details)
-    ]
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'Content-Type': 'application/json'
+    }
 
-    # Log the curl command for debugging
-    logging.debug(f"Curl Command: {' '.join(curl_command)}")
-    
+    # Log the API request details for debugging
+    logging.debug(f"API URL: {api_url}")
+    logging.debug(f"Headers: {headers}")
+    logging.debug(f"Order Details: {json.dumps(order_details)}")
+
     try:
-        # Execute the curl command and capture the output
-        result = subprocess.run(curl_command, capture_output=True, text=True)
+        # Execute the POST request
+        response = requests.post(api_url, headers=headers, json=order_details)
 
-        # Log the result of the curl command
-        logging.debug(f"Curl Output: {result.stdout}")
+        # Log the result of the request
+        logging.debug(f"Response Status Code: {response.status_code}")
+        logging.debug(f"Response JSON: {response.json()}")
 
-        if result.returncode == 0:
-            response_json = json.loads(result.stdout)
-            logging.debug(f"Order Response: {response_json}")
-            return response_json
+        if response.status_code == 200:
+            return response.json()
         else:
-            logging.error(f"Curl failed with exit code {result.returncode}. Error: {result.stderr}")
+            logging.error(f"Failed to place order. Status code: {response.status_code}")
     except Exception as e:
-        logging.error(f"Error during order placement with curl: {str(e)}")
+        logging.error(f"Error during order placement: {str(e)}")
     
     return None
 
@@ -140,8 +138,8 @@ if __name__ == '__main__':
         "is_amo": False
     }
 
-    # Call the API using curl to place the order
-    response = trigger_order_with_curl(order_details, access_token)
+    # Call the API using requests to place the order
+    response = trigger_order_with_requests(order_details, access_token)
 
     if response and response.get('status') == 'success':
         order_id = response['data'].get('orderId')
