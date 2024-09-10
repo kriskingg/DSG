@@ -80,7 +80,10 @@ def update_stock_eligibility():
         try:
             dynamodb.update_item(
                 TableName='StockEligibility',
-                Key={'InstrumentName': {'S': instrument_name}},
+                Key={
+                    'InstrumentName': {'S': instrument_name},
+                    'Eligibility': {'S': stock['Eligibility']['S']}  # Provide both the partition and sort key
+                },
                 UpdateExpression="SET EligibilityStatus = :elig, LastUpdated = :lu",
                 ExpressionAttributeValues={
                     ':elig': {'S': eligibility_status},
