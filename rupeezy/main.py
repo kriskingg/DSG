@@ -15,11 +15,15 @@ import os
 from beest_etf import trigger_order_on_rupeezy, check_order_status, fetch_trade_details
 
 # Setup basic logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levellevel)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 if __name__ == '__main__':
     # Retrieve the access token from environment variables
     access_token = os.getenv('RUPEEZY_ACCESS_TOKEN')
+    
+    # Logging the access token for debugging purposes (you can remove this later)
+    logging.debug(f"Access Token: {access_token}")
+
     if not access_token:
         logging.error("RUPEEZY_ACCESS_TOKEN not found in environment variables. Exiting.")
         exit(1)
@@ -44,12 +48,19 @@ if __name__ == '__main__':
         "disclosed_quantity": 0,
         "validity": "DAY",
         "validity_days": 1,
-        "is_amo": False,
-        "access_token": access_token  # Pass the access token with the order details
+        "is_amo": False
     }
+
+    # Logging the order details to verify everything is correct
+    logging.debug(f"Order Details: {order_details}")
 
     # Place the order
     response = trigger_order_on_rupeezy(order_details)
+
+    # Check if the response is successful
+    if response:
+        logging.debug(f"Order API Response: {response}")
+
     if response and response.get('status') == 'success':
         order_id = response['data'].get('orderId')
         logging.info(f"Order placed successfully with ID: {order_id}")
