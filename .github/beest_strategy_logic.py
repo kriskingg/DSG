@@ -76,16 +76,16 @@ def fetch_chartink_data(condition):
     logging.error("All retries failed")
     return None
 
-# if __name__ == '__main__':
-    # Fetch data from Chartink
-    data = fetch_chartink_data(condition)
+# # if __name__ == '__main__':
+#     # Fetch data from Chartink
+#     data = fetch_chartink_data(condition)
 
-    if data:
-        alpha_etf_data = [item for item in data['data'] if item['nsecode'] == 'ALPHAETF']
+#     if data:
+#         alpha_etf_data = [item for item in data['data'] if item['nsecode'] == 'ALPHAETF']
         
-        if alpha_etf_data:
-            logging.debug(f"Filtered ALPHAETF data: {alpha_etf_data}")
-        else:
-            logging.info("No ALPHAETF data found. No action taken.")
-    else:
-        logging.error("Failed to fetch data from Chartink.")
+#         if alpha_etf_data:
+#             logging.debug(f"Filtered ALPHAETF data: {alpha_etf_data}")
+#         else:
+#             logging.info("No ALPHAETF data found. No action taken.")
+#     else:
+#         logging.error("Failed to fetch data from Chartink.")
