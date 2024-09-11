@@ -24,7 +24,7 @@ def fetch_eligible_stocks_from_dynamodb():
         return []
 
 def trigger_order_via_sdk(client, order_details):
-    """Trigger an order using the SDK."""
+    """Trigger an order using the SDK and log the response."""
     try:
         variety = Vc.VarietyTypes.REGULAR_MARKET_ORDER if order_details['variety'] == "RL-MKT" else Vc.VarietyTypes.REGULAR_LIMIT_ORDER
         response = client.place_order(
@@ -39,7 +39,8 @@ def trigger_order_via_sdk(client, order_details):
             disclosed_quantity=order_details['disclosed_quantity'],
             validity=Vc.ValidityTypes.FULL_DAY if order_details['validity'] == "DAY" else Vc.ValidityTypes.IMMEDIATE_OR_CANCEL
         )
-        logging.debug(f"Order Response: {response}")
+        # Log the entire response for debugging and tracking
+        logging.info(f"Order placed. Full response: {response}")
         return response
     except Exception as e:
         logging.error(f"Error during order placement: {str(e)}")
@@ -84,7 +85,7 @@ if __name__ == "__main__":
                 "is_amo": False
             }
             
-            # Place the order for the eligible stock
+            # Place the order for the eligible stock and log the response
             response = trigger_order_via_sdk(client, order_details)
             if response:
                 logging.info(f"Order placed successfully for {stock['InstrumentName']['S']}: {response}")
