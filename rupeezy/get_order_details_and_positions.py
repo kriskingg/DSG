@@ -37,12 +37,14 @@ if __name__ == "__main__":
     # Check if the artifact file exists
     if os.path.exists(artifact_path):
         with open(artifact_path, 'r') as file:
-            order_id = file.read().strip()  # Read and strip any extra spaces/newlines
-            logging.info(f"Using Order ID from artifact: {order_id}")
+            order_ids = file.read().strip().splitlines()  # Read and split multiple lines into a list
+            logging.info(f"Using Order IDs from artifact: {order_ids}")
             
-            # Fetch order details using the correct order ID
-            fetch_order_details(client, order_id)
-            # Fetch current positions
+            # Fetch order details for each order ID individually
+            for order_id in order_ids:
+                fetch_order_details(client, order_id)
+            
+            # Fetch current positions after processing all orders
             fetch_positions(client)
     else:
         logging.error(f"Artifact file {artifact_path} not found.")
