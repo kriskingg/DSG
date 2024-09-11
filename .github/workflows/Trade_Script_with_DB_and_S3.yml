@@ -36,7 +36,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.8'  # Specifying version
+          python-version: '3.8'
 
       - name: Install dependencies
         run: |
@@ -64,12 +64,26 @@ jobs:
           python rupeezy/main.py
         env:
           RUPEEZY_API_KEY: ${{ secrets.RUPEEZY_API_KEY }}
-          RUPEEZY_ACCESS_TOKEN: ${{ secrets.RUPEEZY_ACCESS_TOKEN }}  # Token loaded from Secrets or Environment
+          RUPEEZY_ACCESS_TOKEN: ${{ secrets.RUPEEZY_ACCESS_TOKEN }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ap-south-1
 
-      # Step 3: Run the script to get order details and positions
+      # Step 3: Upload the order_ids.txt file as an artifact
+      - name: Upload order_ids.txt as an artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: order_ids
+          path: order_ids.txt
+
+      # Step 4: Download the order_ids.txt artifact
+      - name: Download order_ids.txt artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: order_ids
+          path: .
+
+      # Step 5: Run the script to get order details and positions
       - name: Run Order Details and Positions Script
         run: |
           python rupeezy/get_order_details_and_positions.py

@@ -62,32 +62,38 @@ if __name__ == "__main__":
     if not eligible_stocks:
         logging.info("No eligible stocks found.")
     else:
-        for stock in eligible_stocks:
-            # Check if DefaultQuantity is greater than 0, otherwise skip placing the order
-            default_quantity = int(stock.get('DefaultQuantity', {}).get('N', 0))
-            if default_quantity == 0:
-                logging.info(f"Skipping order placement for {stock['InstrumentName']['S']} as DefaultQuantity is 0.")
-                continue  # Skip to the next stock
+        # Open the file to save order IDs
+        with open("order_ids.txt", "w") as order_file:
+            for stock in eligible_stocks:
+                # Check if DefaultQuantity is greater than 0, otherwise skip placing the order
+                default_quantity = int(stock.get('DefaultQuantity', {}).get('N', 0))
+                if default_quantity == 0:
+                    logging.info(f"Skipping order placement for {stock['InstrumentName']['S']} as DefaultQuantity is 0.")
+                    continue  # Skip to the next stock
 
-            order_details = {
-                "exchange": "NSE_EQ",
-                "token": int(stock['Token']['N']),  # Assuming the 'Token' attribute holds the token value
-                "symbol": stock['InstrumentName']['S'],
-                "transaction_type": "BUY",  # You can modify this based on the stock data
-                "product": "DELIVERY",
-                "variety": "RL-MKT",  # Assuming market order, modify if needed
-                "quantity": default_quantity,  # Using the DefaultQuantity from DynamoDB
-                "price": 0.0,  # For market orders, price can be 0
-                "trigger_price": 0.0,
-                "disclosed_quantity": 0,
-                "validity": "DAY",
-                "validity_days": 1,
-                "is_amo": False
-            }
-            
-            # Place the order for the eligible stock and log the response
-            response = trigger_order_via_sdk(client, order_details)
-            if response:
-                logging.info(f"Order placed successfully for {stock['InstrumentName']['S']}: {response}")
-            else:
-                logging.error(f"Order placement failed for {stock['InstrumentName']['S']}")
+                order_details = {
+                    "exchange": "NSE_EQ",
+                    "token": int(stock['Token']['N']),  # Assuming the 'Token' attribute holds the token value
+                    "symbol": stock['InstrumentName']['S'],
+                    "transaction_type": "BUY",  # You can modify this based on the stock data
+                    "product": "DELIVERY",
+                    "variety": "RL-MKT",  # Assuming market order, modify if needed
+                    "quantity": default_quantity,  # Using the DefaultQuantity from DynamoDB
+                    "price": 0.0,  # For market orders, price can be 0
+                    "trigger_price": 0.0,
+                    "disclosed_quantity": 0,
+                    "validity": "DAY",
+                    "validity_days": 1,
+                    "is_amo": False
+                }
+
+                # Place the order for the eligible stock and log the response
+                response = trigger_order_via_sdk(client, order_details)
+                if response:
+                    order_id = response['data']['orderId']
+                    logging.info(f"Order placed successfully for {stock['InstrumentName']['S']}: {response}")
+
+                    # Save the order ID to the file
+                    order_file.write(f"{order_id}\n")
+                else:
+                    logging.error(f"Order placement failed for {stock['InstrumentName']['S']}")
