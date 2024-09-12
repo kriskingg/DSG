@@ -27,11 +27,11 @@ def scan_all_dynamodb_table():
         return None
 
 def scan_filtered_by_status():
-    """Scan the table filtering by EligibilityStatus = 'Eligible', with trimming and normalization."""
+    """Scan the table filtering by EligibilityStatus = 'Eligible'."""
     try:
         # Scan the table for stocks that are eligible
         response = table.scan(
-            FilterExpression="trim(EligibilityStatus) = :status",
+            FilterExpression="EligibilityStatus = :status",
             ExpressionAttributeValues={
                 ':status': {'S': 'Eligible'}
             }
@@ -44,6 +44,14 @@ def scan_filtered_by_status():
                 logging.info(f"EligibilityStatus: {item.get('EligibilityStatus')}")  # Log EligibilityStatus
         else:
             logging.info("No matching items found.")
+        
+        # Manually log all EligibilityStatus for further debugging
+        logging.info("Manually inspecting all items' EligibilityStatus:")
+        all_items = table.scan().get('Items', [])
+        for item in all_items:
+            eligibility_status = item.get('EligibilityStatus', '')
+            logging.info(f"Item: {item['InstrumentName']} - EligibilityStatus: '{eligibility_status}'")
+
     except ClientError as e:
         logging.error(f"Error scanning DynamoDB table: {e}")
         return None
@@ -75,7 +83,7 @@ if __name__ == "__main__":
     scan_all_dynamodb_table()  # First scan all items in the table
     
     logging.info("Starting filter by EligibilityStatus...")
-    scan_filtered_by_status()  # Test EligibilityStatus filter with trimming
+    scan_filtered_by_status()  # Test EligibilityStatus filter
     
     logging.info("Starting filter by AdditionalQuantity...")
     scan_filtered_by_quantity()  # Test AdditionalQuantity filter
