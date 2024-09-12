@@ -11,6 +11,7 @@ dynamodb = boto3.resource('dynamodb', region_name='ap-south-1')
 table = dynamodb.Table('StockEligibility')
 
 def scan_all_dynamodb_table():
+    """Scan and log all items in the table."""
     try:
         # Scan the DynamoDB table and print all items
         response = table.scan()
@@ -25,9 +26,52 @@ def scan_all_dynamodb_table():
         logging.error(f"Error scanning DynamoDB table: {e}")
         return None
 
-def scan_filtered_dynamodb_table():
+def scan_filtered_by_status():
+    """Scan the table filtering by EligibilityStatus = 'Eligible'."""
     try:
-        # Scan the DynamoDB table for stocks that are eligible and have AdditionalQuantity > 0
+        # Scan the table for stocks that are eligible
+        response = table.scan(
+            FilterExpression="EligibilityStatus = :status",
+            ExpressionAttributeValues={
+                ':status': {'S': 'Eligible'}
+            }
+        )
+        items = response.get('Items', [])
+        if items:
+            logging.info(f"Found {len(items)} items matching 'Eligible' status:")
+            for item in items:
+                logging.info(f"{item['InstrumentName']['S']} - EligibilityStatus: {item['EligibilityStatus']['S']}")
+        else:
+            logging.info("No matching items found.")
+    except ClientError as e:
+        logging.error(f"Error scanning DynamoDB table: {e}")
+        return None
+
+def scan_filtered_by_quantity():
+    """Scan the table filtering by AdditionalQuantity > 0."""
+    try:
+        # Scan the table for stocks that have AdditionalQuantity > 0
+        response = table.scan(
+            FilterExpression="AdditionalQuantity > :qty",
+            ExpressionAttributeValues={
+                ':qty': Decimal('0')
+            }
+        )
+        items = response.get('Items', [])
+        if items:
+            logging.info(f"Found {len(items)} items with AdditionalQuantity > 0:")
+            for item in items:
+                logging.info(f"{item['InstrumentName']['S']} - AdditionalQuantity: {item['AdditionalQuantity']['N']}")
+        else:
+            logging.info("No matching items found.")
+    except ClientError as e:
+        logging.error(f"Error scanning DynamoDB table: {e}")
+        return None
+
+def scan_filtered_dynamodb_table():
+    """Scan the table filtering by both EligibilityStatus = 'Eligible' and AdditionalQuantity > 0."""
+    try:
+        # Scan the table for stocks that are eligible and have AdditionalQuantity > 0
         response = table.scan(
             FilterExpression="EligibilityStatus = :status AND AdditionalQuantity > :qty",
             ExpressionAttributeValues={
@@ -50,5 +94,12 @@ def scan_filtered_dynamodb_table():
 if __name__ == "__main__":
     logging.info("Starting full table scan...")
     scan_all_dynamodb_table()  # First scan all items in the table
-    logging.info("Starting filtered table scan...")
-    scan_filtered_dynamodb_table()  # Then scan with the filter
+    
+    logging.info("Starting filter by EligibilityStatus...")
+    scan_filtered_by_status()  # Test EligibilityStatus filter
+    
+    logging.info("Starting filter by AdditionalQuantity...")
+    scan_filtered_by_quantity()  # Test AdditionalQuantity filter
+    
+    logging.info("Starting combined filter...")
+    scan_filtered_dynamodb_table()  # Test combined filter
