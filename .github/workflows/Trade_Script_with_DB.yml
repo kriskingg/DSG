@@ -18,7 +18,7 @@
 
 # The access token is saved as an artifact (access_token.txt) and uploaded as a GitHub secret for future use.
 
-name: Beest ETF Modularized with AWS DynamoDB
+name: Beest ETF Modularized with AWS DynamoDB v1
 
 on:
   workflow_dispatch:  # Allows manual triggering
@@ -58,8 +58,8 @@ jobs:
         run: |
           python rupeezy/beest_eligibility_and_price_check.py
 
-      # Step 2: Run the main order placement script
-      - name: Run Main Orchestration Script
+      # Step 2: Run the main orchestration script (consolidated version)
+      - name: Run Main Orchestration Script (Place Orders and Update BaseValue)
         run: |
           python rupeezy/main.py
         env:
@@ -76,17 +76,3 @@ jobs:
           name: order_ids
           path: order_ids.txt
 
-      # Step 4: Download the order_ids.txt artifact
-      - name: Download order_ids.txt artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: order_ids
-          path: .
-
-      # Step 5: Run the script to get order details and positions
-      - name: Run Order Details and Positions Script
-        run: |
-          python rupeezy/get_order_details_and_positions.py
-        env:
-          RUPEEZY_API_KEY: ${{ secrets.RUPEEZY_API_KEY }}
-          RUPEEZY_ACCESS_TOKEN: ${{ secrets.RUPEEZY_ACCESS_TOKEN }}
