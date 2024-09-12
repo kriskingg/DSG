@@ -33,16 +33,17 @@ def get_current_price(instrument_token):
         return None  # Return None if the API call fails
 
 # Function to check the user's available funds via the broker's API
-def check_available_funds():
+  def check_available_funds():
     try:
-        # Call the broker's API to fetch the user's available funds
-        response = client.funds()
-        # Extract and return the available funds as a Decimal, or 0 if the value isn't found
-        available_funds = Decimal(response['data'].get('available_funds', 0))
+        response = client.funds()  # Call the SDK method to get funds
+        logging.debug(f"Full response from funds API: {response}")
+        # Attempt to extract available funds only if 'data' exists in response
+        available_funds = Decimal(response.get('data', {}).get('available_funds', 0))
         return available_funds
-    except Exception as e:  # Handle and log any errors encountered during the API call
+    except Exception as e:
         logging.error(f"Error fetching available funds: {str(e)}")
-        return None  # Return None if the API call fails
+        return None
+
 
 # Function to calculate the percentage drop between the base value (buy price) and current stock price
 def calculate_percentage_drop(base_value, current_price):
