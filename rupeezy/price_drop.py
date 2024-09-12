@@ -2,6 +2,7 @@ import logging  # Python's built-in module for logging events and debugging mess
 import boto3  # AWS SDK for Python to interact with AWS services (in this case, DynamoDB)
 from decimal import Decimal  # Module to handle decimal numbers for accuracy in currency values
 from vortex_api import AsthaTradeVortexAPI, Constants as Vc  # Broker API SDK and constants
+import os  # Required for fetching environment variables
 
 # Set up basic logging configuration to capture and display log messages
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
