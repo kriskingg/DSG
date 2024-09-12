@@ -33,7 +33,8 @@ def get_current_price(instrument_token):
         return None  # Return None if the API call fails
 
 # Function to check the user's available funds via the broker's API
-  def check_available_funds():
+# Function to check the user's available funds via the broker's API
+def check_available_funds():
     try:
         response = client.funds()  # Call the SDK method to get funds
         logging.debug(f"Full response from funds API: {response}")
