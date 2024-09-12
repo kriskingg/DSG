@@ -60,7 +60,7 @@ def process_additional_quantity():
     # Scan the DynamoDB table for stocks that are eligible and have AdditionalQuantity > 0
     response = table.scan(
         FilterExpression="EligibilityStatus = :status AND AdditionalQuantity > :qty",
-        ExpressionAttributeValues={':status': {'S': 'Eligible'}, ':qty': Decimal('0')}
+        ExpressionAttributeValues={':status': 'Eligible', ':qty': Decimal('0')}  # Fixed the ExpressionAttributeValues formatting
     )
     # Get the list of eligible stocks from the DynamoDB scan response
     items = response.get('Items', [])
