@@ -36,4 +36,4 @@ jobs:
 
       # Run the Python script to scan DynamoDB
       - name: Run DynamoDB Scan Script
-        run: python test_dynamodb_scan.py
+        run: python rupeezy/test_dynamodb_scan.py
