@@ -31,7 +31,7 @@ def scan_filtered_by_status():
     try:
         # Scan the table for stocks that are eligible
         response = table.scan(
-            FilterExpression="trim(EligibilityStatus) = :status",
+            FilterExpression="EligibilityStatus = :status",
             ExpressionAttributeValues={
                 ':status': {'S': 'Eligible'}
             }
@@ -40,8 +40,7 @@ def scan_filtered_by_status():
         if items:
             logging.info(f"Found {len(items)} items matching 'Eligible' status:")
             for item in items:
-                logging.info(f"Item structure: {item}")  # Log full item structure to analyze the format
-                logging.info(f"EligibilityStatus: {item.get('EligibilityStatus')}")  # Log EligibilityStatus
+                logging.info(f"Item structure: {item}")
         else:
             logging.info("No matching items found.")
         
@@ -69,7 +68,7 @@ def scan_filtered_by_quantity():
         if items:
             logging.info(f"Found {len(items)} items with AdditionalQuantity > 0:")
             for item in items:
-                logging.info(f"Item structure: {item}")  # Print the entire item structure for debugging
+                logging.info(f"Item structure: {item}")
                 logging.info(f"{item.get('InstrumentName')} - AdditionalQuantity: {item.get('AdditionalQuantity')}")
         else:
             logging.info("No matching items found.")

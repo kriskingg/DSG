@@ -19,6 +19,9 @@
 #   This script is designed to automate the process of validating stock eligibility and updating the corresponding records in DynamoDB based on data fetched from Chartink.
 
 # Standard library imports
+
+
+# Standard library imports
 import os  # Library for interacting with the operating system (e.g., environment variables)
 import logging  # Module for logging events and debugging messages
 
@@ -111,7 +114,7 @@ def update_stock_eligibility():
     
     # Loop through each stock in the DynamoDB table
     for stock in all_stocks:
-        instrument_name = stock['InstrumentName']['S']  # Extract the instrument name (stock ticker)
+        instrument_name = stock['InstrumentName']['S'].strip()  # Extract and clean the instrument name (stock ticker)
         is_eligible = instrument_name in eligible_instruments  # Check if the stock is in the eligible set
 
         # Set the eligibility status based on whether the stock is eligible or not
@@ -129,12 +132,12 @@ def update_stock_eligibility():
                 TableName='StockEligibility',  # Specify the DynamoDB table to update
                 Key={
                     'InstrumentName': {'S': instrument_name},  # Primary key: instrument name
-                    'Eligibility': {'S': stock['Eligibility']['S']}  # Sort key: eligibility
+                    'Eligibility': {'S': stock['Eligibility']['S'].strip()}  # Sort key: eligibility, cleaned
                 },
                 # Update expression to set the new eligibility status, base value, and last updated timestamp
                 UpdateExpression="SET EligibilityStatus = :elig, LastUpdated = :lu, BaseValue = :bv",
                 ExpressionAttributeValues={
-                    ':elig': {'S': eligibility_status},  # Set eligibility status
+                    ':elig': {'S': eligibility_status.strip()},  # Set eligibility status and ensure no extra spaces
                     ':lu': {'S': current_time},  # Set the last updated timestamp
                     ':bv': {'N': base_value}  # Set BaseValue, reset to -1 if ineligible
                 }

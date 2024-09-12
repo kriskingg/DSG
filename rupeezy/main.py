@@ -28,6 +28,11 @@ def fetch_eligible_stocks_from_dynamodb():
             FilterExpression="EligibilityStatus = :status",  # A filter to only fetch stocks that are eligible
             ExpressionAttributeValues={':status': {'S': 'Eligible'}}  # AttributeValue to match "Eligible" stocks
         )
+        
+        # Inspect the EligibilityStatus for each stock
+        for stock in response['Items']:
+            logging.debug(f"EligibilityStatus for {stock['InstrumentName']['S']}: {repr(stock['EligibilityStatus']['S'])}")
+        
         return response['Items']  # Return the list of eligible stock items from the response
     except Exception as e:  # If any error occurs, log the error
         logging.error(f"Error fetching eligible stocks from DynamoDB: {e}")
