@@ -1,84 +1,146 @@
-# import boto3
-# from decimal import Decimal
+import logging  # Python's built-in module for logging events and debugging messages
+import boto3  # AWS SDK for Python to interact with AWS services (in this case, DynamoDB)
+from decimal import Decimal  # Module to handle decimal numbers for accuracy in currency values
+from vortex_api import AsthaTradeVortexAPI, Constants as Vc  # Broker API SDK and constants
 
-# # Mock function to fetch current stock price (you will replace this with a real API call)
-# def get_current_price(instrument):
-#     mock_prices = {
-#         'ALPHAETF': 98.0,  # Example price for ALPHAETF
-#         'NIFTYBEES': 97.5, # Example price for NIFTYBEES
-#     }
-#     return mock_prices.get(instrument, None)
+# Set up basic logging configuration to capture and display log messages
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-# # Function to check if the stock is down by 1% or more
-# def calculate_percentage_drop(buy_value, current_price):
-#     return ((buy_value - current_price) / buy_value) * 100
+# Initialize a connection to the DynamoDB table using boto3
+dynamodb = boto3.resource('dynamodb', region_name='ap-south-1')
+# Reference to the DynamoDB table where stock eligibility data is stored
+table = dynamodb.Table('StockEligibility')
 
-# # Connect to DynamoDB
-# dynamodb = boto3.resource('dynamodb')
-# table = dynamodb.Table('YourDynamoDBTable')
+# Initialize the broker API client using the credentials from environment variables
+api_secret = os.getenv('RUPEEZY_API_KEY')  # Fetch the API key from environment variables
+application_id = os.getenv('RUPEEZY_APPLICATION_ID')  # Fetch the Application ID
+access_token = os.getenv('RUPEEZY_ACCESS_TOKEN')  # Fetch the access token
 
-# # Function to update DynamoDB with new BuyValue
-# def update_buy_value(instrument, new_buy_value):
-#     table.update_item(
-#         Key={'Instrument': instrument},
-#         UpdateExpression="SET BuyValue = :bv",
-#         ExpressionAttributeValues={':bv': Decimal(new_buy_value)}
-#     )
-#     print(f"{instrument}: BuyValue set to {new_buy_value}")
+# Create an instance of the AsthaTradeVortexAPI client with the fetched credentials
+client = AsthaTradeVortexAPI(api_secret, application_id)
+client.access_token = access_token  # Set the access token for making authenticated API requests
 
-# # Function to reset BuyValue when stock becomes ineligible
-# def reset_buy_value(instrument):
-#     table.update_item(
-#         Key={'Instrument': instrument},
-#         UpdateExpression="REMOVE BuyValue"
-#     )
-#     print(f"{instrument}: BuyValue reset (stock ineligible)")
+# Function to fetch the current stock price using the instrument token via the broker's API
+def get_current_price(instrument_token):
+    try:
+        # Call the broker's API to get the Last Traded Price (LTP) for the given stock token
+        response = client.quotes([f"NSE_EQ-{instrument_token}"], mode=Vc.QuoteModes.LTP)
+        # Return the last traded price (LTP) as a Decimal, or 0 if the value isn't found
+        return Decimal(response['data'][0].get('ltp', 0))
+    except Exception as e:  # Handle and log any errors encountered during the API call
+        logging.error(f"Error fetching current price for token {instrument_token}: {str(e)}")
+        return None  # Return None if the API call fails
 
-# # Function to process additional quantity logic
-# def process_additional_quantity():
-#     # Fetch eligible instruments from DynamoDB
-#     response = table.scan()  # Assuming a table scan; optimize with query if needed
-#     items = response.get('Items', [])
+# Function to check the user's available funds via the broker's API
+def check_available_funds():
+    try:
+        # Call the broker's API to fetch the user's available funds
+        response = client.funds()
+        # Extract and return the available funds as a Decimal, or 0 if the value isn't found
+        available_funds = Decimal(response['data'].get('available_funds', 0))
+        return available_funds
+    except Exception as e:  # Handle and log any errors encountered during the API call
+        logging.error(f"Error fetching available funds: {str(e)}")
+        return None  # Return None if the API call fails
 
-#     for item in items:
-#         instrument = item['Instrument']
-#         additional_quantity = int(item['AdditionalQuantity'])
-#         eligibility_status = item.get('Eligibility', 'Not Eligible')
-        
-#         # Check if BuyValue exists; set to None if not present
-#         buy_value = item.get('BuyValue', None)
+# Function to calculate the percentage drop between the base value (buy price) and current stock price
+def calculate_percentage_drop(base_value, current_price):
+    # Formula to calculate percentage drop: (BaseValue - CurrentPrice) / BaseValue * 100
+    return ((base_value - current_price) / base_value) * 100
 
-#         if eligibility_status != 'Eligible':
-#             print(f"{instrument} is not eligible for trading. Resetting BuyValue.")
-#             reset_buy_value(instrument)
-#             continue
+# Main function to process stocks for additional quantity logic based on percentage drop
+def process_additional_quantity():
+    # Fetch available funds first by calling the broker API
+    available_funds = check_available_funds()
+    if available_funds is None:  # If available funds could not be retrieved, skip further processing
+        logging.error("Unable to retrieve available funds. Skipping all orders.")
+        return
 
-#         # Fetch current price from the API
-#         current_price = get_current_price(instrument)
-#         if current_price is None:
-#             print(f"Could not fetch the current price for {instrument}. Skipping.")
-#             continue
+    # Scan the DynamoDB table for stocks that are eligible and have AdditionalQuantity > 0
+    response = table.scan(
+        FilterExpression="EligibilityStatus = :status AND AdditionalQuantity > :qty",
+        ExpressionAttributeValues={':status': {'S': 'Eligible'}, ':qty': {'N': '0'}}
+    )
+    # Get the list of eligible stocks from the DynamoDB scan response
+    items = response.get('Items', [])
 
-#         # If stock just became eligible and there's no BuyValue, record the first transaction
-#         if buy_value is None:
-#             update_buy_value(instrument, current_price)
-#             buy_value = Decimal(current_price)  # Set BuyValue to the current price for this iteration
+    # Loop through each eligible stock in the DynamoDB table
+    for item in items:
+        instrument = item['InstrumentName']['S']  # Fetch the stock symbol (InstrumentName)
+        instrument_token = int(item['Token']['N'])  # Fetch the stock's token for API requests
+        additional_quantity = int(item['AdditionalQuantity']['N'])  # Fetch the additional quantity
 
-#         # Calculate the percentage drop
-#         percentage_drop = calculate_percentage_drop(buy_value, Decimal(current_price))
+        # Check if the stock has a valid BaseValue (initial purchase price), and skip if not
+        base_value = item.get('BaseValue', None)
+        if base_value is None or Decimal(base_value['N']) <= 0:
+            logging.info(f"{instrument} does not have a valid BaseValue. Skipping.")
+            continue  # Skip this stock if there's no valid BaseValue
 
-#         # Determine the action based on the percentage drop
-#         if percentage_drop >= 2:
-#             # If 2% down or more, buy twice the AdditionalQuantity
-#             print(f"{instrument} is down by {percentage_drop:.2f}% - Buying twice the AdditionalQuantity ({2 * additional_quantity} units)")
-#             # Trigger your order logic here to buy 2 * additional_quantity
-#         elif percentage_drop >= 1:
-#             # If 1% down or more, buy the AdditionalQuantity
-#             print(f"{instrument} is down by {percentage_drop:.2f}% - Buying the AdditionalQuantity ({additional_quantity} units)")
-#             # Trigger your order logic here to buy additional_quantity
-#         else:
-#             # If the price hasn't dropped by at least 1%, no action is taken
-#             print(f"{instrument} is down by {percentage_drop:.2f}% - No action taken")
+        # Convert BaseValue to a Decimal for accurate calculations
+        base_value = Decimal(base_value['N'])
 
-# if __name__ == "__main__":
-#     process_additional_quantity()
+        # Fetch the current stock price from the broker's API
+        current_price = get_current_price(instrument_token)
+        if current_price is None:  # If the current price could not be retrieved, skip this stock
+            logging.info(f"Could not fetch the current price for {instrument}. Skipping.")
+            continue
+
+        # Calculate the percentage drop between the BaseValue and the current price
+        percentage_drop = calculate_percentage_drop(base_value, current_price)
+
+        # Calculate the total cost of buying additional stocks based on the current price and quantity
+        total_cost = current_price * additional_quantity
+
+        # Check if the available funds are sufficient for the calculated total cost
+        if percentage_drop >= 2:  # If the price has dropped by 2% or more
+            total_cost = current_price * 2 * additional_quantity  # Update the total cost for 2x additional quantity
+            if total_cost <= available_funds:  # If funds are sufficient, place the order
+                logging.info(f"{instrument} is down by {percentage_drop:.2f}% - Buying twice the AdditionalQuantity ({2 * additional_quantity} units)")
+                trigger_order_via_sdk(client, prepare_order_details(instrument_token, 2 * additional_quantity))
+                available_funds -= total_cost  # Deduct the cost from available funds after placing the order
+            else:
+                # Log a warning if there are not enough funds to place the order
+                logging.warning(f"Not enough funds to buy twice the AdditionalQuantity for {instrument}. Available: {available_funds}, Required: {total_cost}")
+
+        elif percentage_drop >= 1:  # If the price has dropped by 1% or more
+            if total_cost <= available_funds:  # If funds are sufficient, place the order
+                logging.info(f"{instrument} is down by {percentage_drop:.2f}% - Buying the AdditionalQuantity ({additional_quantity} units)")
+                trigger_order_via_sdk(client, prepare_order_details(instrument_token, additional_quantity))
+                available_funds -= total_cost  # Deduct the cost from available funds after placing the order
+            else:
+                # Log a warning if there are not enough funds to place the order
+                logging.warning(f"Not enough funds to buy the AdditionalQuantity for {instrument}. Available: {available_funds}, Required: {total_cost}")
+        else:
+            # If the percentage drop is less than 1%, log a message and take no action
+            logging.info(f"{instrument} is down by {percentage_drop:.2f}% - No action taken")
+
+# Function to prepare the order details for placing an order via the broker's API
+def prepare_order_details(instrument_token, quantity):
+    # Return a dictionary containing all the necessary details for placing a market order
+    return {
+        "exchange": "NSE_EQ",  # Specify the exchange (NSE Equity)
+        "token": instrument_token,  # Stock token for identifying the stock
+        "transaction_type": "BUY",  # Specify the transaction type (Buy order)
+        "product": "DELIVERY",  # Specify the product type (Delivery)
+        "variety": "RL-MKT",  # Specify the order variety (Market order)
+        "quantity": quantity,  # The number of stocks to buy
+        "price": 0.0,  # Set the price to 0 for market orders
+        "trigger_price": 0.0,  # No trigger price needed for market orders
+        "disclosed_quantity": 0,  # No disclosed quantity
+        "validity": "DAY",  # Specify that the order is valid for the day
+        "validity_days": 1,  # The order is valid for 1 day
+        "is_amo": False  # The order is not an after-market order
+    }
+
+# Function to place an order via the broker's API using the prepared order details
+def trigger_order_via_sdk(client, order_details):
+    try:
+        # Place the order via the broker's API
+        response = client.place_order(**order_details)
+        logging.info(f"Order placed successfully: {response}")  # Log the response from the API
+    except Exception as e:  # Handle and log any errors encountered during the order placement
+        logging.error(f"Error placing order: {str(e)}")
+
+# Main function to run when the script is executed
+if __name__ == "__main__":
+    process_additional_quantity()  # Call the function to process the additional quantity logic
