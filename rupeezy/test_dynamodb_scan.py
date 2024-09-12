@@ -29,11 +29,11 @@ def scan_all_dynamodb_table():
 def scan_filtered_by_status():
     """Scan the table filtering by EligibilityStatus = 'Eligible'."""
     try:
-        # Scan the table for stocks that are eligible
+        # Scan the table for stocks that are eligible using begins_with to ensure a partial match works
         response = table.scan(
-            FilterExpression="EligibilityStatus = :status",
+            FilterExpression="begins_with(EligibilityStatus, :status)",
             ExpressionAttributeValues={
-                ':status': {'S': 'Eligible'}
+                ':status': 'Eligible'  # Ensure exact string match
             }
         )
         items = response.get('Items', [])
