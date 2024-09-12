@@ -27,11 +27,11 @@ def scan_all_dynamodb_table():
         return None
 
 def scan_filtered_by_status():
-    """Scan the table filtering by EligibilityStatus = 'Eligible'."""
+    """Scan the table filtering by EligibilityStatus = 'Eligible', with trimming and normalization."""
     try:
         # Scan the table for stocks that are eligible
         response = table.scan(
-            FilterExpression="EligibilityStatus = :status",
+            FilterExpression="trim(EligibilityStatus) = :status",
             ExpressionAttributeValues={
                 ':status': {'S': 'Eligible'}
             }
@@ -75,7 +75,7 @@ if __name__ == "__main__":
     scan_all_dynamodb_table()  # First scan all items in the table
     
     logging.info("Starting filter by EligibilityStatus...")
-    scan_filtered_by_status()  # Test EligibilityStatus filter
+    scan_filtered_by_status()  # Test EligibilityStatus filter with trimming
     
     logging.info("Starting filter by AdditionalQuantity...")
     scan_filtered_by_quantity()  # Test AdditionalQuantity filter
