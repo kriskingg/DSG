@@ -123,28 +123,30 @@ def process_additional_quantity():
         return
 
     # Scan the DynamoDB table for stocks that are eligible and have AdditionalQuantity > 0
-    response = table.scan(
-        FilterExpression="EligibilityStatus = :status AND AdditionalQuantity > :qty",
-        ExpressionAttributeValues={':status': 'Eligible', ':qty': Decimal('0')}
-    )
-    
-    # Get the list of eligible stocks from the DynamoDB scan response
-    items = response.get('Items', [])
+    try:
+        response = table.scan(
+            FilterExpression="EligibilityStatus = :status AND AdditionalQuantity > :qty",
+            ExpressionAttributeValues={':status': 'Eligible', ':qty': Decimal('0')}
+        )
+        items = response.get('Items', [])
+    except ClientError as e:
+        logging.error(f"Error scanning DynamoDB table: {e}")
+        return
 
     # Loop through each eligible stock in the DynamoDB table
     for item in items:
-        instrument = item['InstrumentName']['S']  # Fetch the stock symbol (InstrumentName)
-        instrument_token = int(item['Token']['N'])  # Fetch the stock's token for API requests
-        additional_quantity = int(item['AdditionalQuantity']['N'])  # Fetch the additional quantity
+        instrument = item.get('InstrumentName', '')  # Fetch the stock symbol (InstrumentName)
+        instrument_token = int(item.get('Token', 0))  # Fetch the stock's token for API requests
+        additional_quantity = int(item.get('AdditionalQuantity', 0))  # Fetch the additional quantity
 
         # Check if the stock has a valid BaseValue (initial purchase price), and skip if not
         base_value = item.get('BaseValue', None)
-        if base_value is None or Decimal(base_value['N']) <= 0:
+        if base_value is None or Decimal(base_value) <= 0:
             logging.info(f"{instrument} does not have a valid BaseValue. Skipping.")
             continue  # Skip this stock if there's no valid BaseValue
 
         # Convert BaseValue to a Decimal for accurate calculations
-        base_value = Decimal(base_value['N'])
+        base_value = Decimal(base_value)
 
         # Fetch the current stock price from the broker's API
         current_price = get_current_price(instrument_token)
@@ -180,6 +182,7 @@ def process_additional_quantity():
         else:
             # If the percentage drop is less than 1%, log a message and take no action
             logging.info(f"{instrument} is down by {percentage_drop:.2f}% - No action taken")
+
 
 # Function to prepare the order details for placing an order via the broker's API
 def prepare_order_details(instrument_token, quantity):
