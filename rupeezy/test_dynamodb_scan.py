@@ -31,7 +31,7 @@ def scan_filtered_by_status():
     try:
         # Scan the table for stocks that are eligible
         response = table.scan(
-            FilterExpression="EligibilityStatus = :status",
+            FilterExpression="trim(EligibilityStatus) = :status",
             ExpressionAttributeValues={
                 ':status': {'S': 'Eligible'}
             }
@@ -50,8 +50,7 @@ def scan_filtered_by_status():
         all_items = table.scan().get('Items', [])
         for item in all_items:
             eligibility_status = item.get('EligibilityStatus', '')
-            logging.info(f"Item: {item['InstrumentName']} - EligibilityStatus: '{eligibility_status}'")
-
+            logging.info(f"Item: {item['InstrumentName']} - EligibilityStatus: '{eligibility_status}' - Length: {len(eligibility_status)} - Byte: {eligibility_status.encode('utf-8')}")
     except ClientError as e:
         logging.error(f"Error scanning DynamoDB table: {e}")
         return None
