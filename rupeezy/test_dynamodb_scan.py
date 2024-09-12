@@ -10,7 +10,22 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 dynamodb = boto3.resource('dynamodb', region_name='ap-south-1')
 table = dynamodb.Table('StockEligibility')
 
-def scan_dynamodb_table():
+def scan_all_dynamodb_table():
+    try:
+        # Scan the DynamoDB table and print all items
+        response = table.scan()
+        items = response.get('Items', [])
+        if items:
+            logging.info(f"Found {len(items)} total items:")
+            for item in items:
+                logging.info(f"Item: {item}")
+        else:
+            logging.info("No items found in the table.")
+    except ClientError as e:
+        logging.error(f"Error scanning DynamoDB table: {e}")
+        return None
+
+def scan_filtered_dynamodb_table():
     try:
         # Scan the DynamoDB table for stocks that are eligible and have AdditionalQuantity > 0
         response = table.scan(
@@ -33,4 +48,7 @@ def scan_dynamodb_table():
         return None
 
 if __name__ == "__main__":
-    scan_dynamodb_table()
+    logging.info("Starting full table scan...")
+    scan_all_dynamodb_table()  # First scan all items in the table
+    logging.info("Starting filtered table scan...")
+    scan_filtered_dynamodb_table()  # Then scan with the filter
