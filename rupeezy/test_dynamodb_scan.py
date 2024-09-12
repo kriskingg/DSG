@@ -40,8 +40,8 @@ def scan_filtered_by_status():
         if items:
             logging.info(f"Found {len(items)} items matching 'Eligible' status:")
             for item in items:
-                logging.info(f"{item}")  # Log full item structure to analyze the format
-                # Add specific logging once structure is confirmed
+                logging.info(f"Item structure: {item}")  # Log full item structure to analyze the format
+                logging.info(f"EligibilityStatus: {item.get('EligibilityStatus')}")  # Log EligibilityStatus
         else:
             logging.info("No matching items found.")
     except ClientError as e:
@@ -63,7 +63,6 @@ def scan_filtered_by_quantity():
             logging.info(f"Found {len(items)} items with AdditionalQuantity > 0:")
             for item in items:
                 logging.info(f"Item structure: {item}")  # Print the entire item structure for debugging
-                # Adjust the following line based on the structure
                 logging.info(f"{item.get('InstrumentName')} - AdditionalQuantity: {item.get('AdditionalQuantity')}")
         else:
             logging.info("No matching items found.")
