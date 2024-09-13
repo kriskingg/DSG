@@ -98,7 +98,6 @@ def update_stock_eligibility():
     """Update stock eligibility based on Chartink data and update DynamoDB records."""
     # Get the current time in the Asia/Kolkata time zone
     now = datetime.now(pytz.timezone('Asia/Kolkata'))
-    # Format the current time as a string to store in DynamoDB
     current_time = now.strftime("%Y-%m-%dT%H:%M:%S")
 
     # Fetch data from Chartink
@@ -120,15 +119,19 @@ def update_stock_eligibility():
 
         # Set the eligibility status based on whether the stock is eligible or not
         eligibility_status = 'Eligible' if is_eligible else 'Ineligible'
+        
+        # Log the stock's current status for visibility
+        logging.debug(f"Processing {instrument_name}: Current EligibilityStatus={stock['EligibilityStatus']['S']}, "
+                      f"New EligibilityStatus={eligibility_status}, BaseValue={stock.get('BaseValue', {}).get('N', 'None')}")
 
         # **Refined BaseValue Logic**: Reset BaseValue if eligibility changes
-        # If eligibility status changes (Eligible to Ineligible or vice versa), reset BaseValue to -1
         if stock['EligibilityStatus']['S'].strip() != eligibility_status:
+            # Reset BaseValue only if there is an eligibility change
             base_value = '-1'
             logging.info(f"Eligibility change detected for {instrument_name}. Resetting BaseValue to -1.")
         else:
-            # If eligibility hasn't changed, keep the current BaseValue
-            base_value = stock.get('BaseValue', {'N': '0'})['N']  
+            # If no change in eligibility, keep the current BaseValue
+            base_value = stock.get('BaseValue', {}).get('N', '0')
             logging.info(f"No eligibility change for {instrument_name}. Keeping BaseValue: {base_value}")
 
         # Log the update for the stock
@@ -145,9 +148,9 @@ def update_stock_eligibility():
                 # Update expression to set the new eligibility status, base value, and last updated timestamp
                 UpdateExpression="SET EligibilityStatus = :elig, LastUpdated = :lu, BaseValue = :bv",
                 ExpressionAttributeValues={
-                    ':elig': {'S': eligibility_status.strip()},  # Set eligibility status and ensure no extra spaces
+                    ':elig': {'S': eligibility_status.strip()},  # Set eligibility status
                     ':lu': {'S': current_time},  # Set the last updated timestamp
-                    ':bv': {'N': base_value}  # Reset BaseValue if the stock becomes eligible/ineligible
+                    ':bv': {'N': str(base_value)}  # Reset BaseValue if necessary
                 }
             )
             logging.info(f"Successfully updated {instrument_name} to {eligibility_status}.")
