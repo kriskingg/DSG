@@ -24,6 +24,8 @@ client.access_token = access_token
 instrument_token = 19640  # Token for ALPHAETF
 
 # Function to fetch the current stock price
+from decimal import Decimal, ROUND_HALF_UP
+
 def get_current_price(instrument_token):
     try:
         # Request the stock price from the broker API
@@ -44,10 +46,14 @@ def get_current_price(instrument_token):
             logging.error(f"Received LTP as 0 for token {instrument_token}: {response}")
             return None
         
-        return Decimal(ltp)
+        # Convert to Decimal and round to two decimal places
+        price = Decimal(ltp).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        
+        return price
     except Exception as e:
         logging.error(f"Error fetching current price for token {instrument_token}: {str(e)}")
         return None
+
 
 
 # Main function to fetch and log the stock price
