@@ -1,41 +1,31 @@
 name: Fetch Stock Price
 
 on:
-  # Existing triggers
   schedule:
-    - cron: '0 * * * *'
-  
-  # Add this to allow manual triggers
-  workflow_dispatch:
+    - cron: '0 9 * * *'  # Runs daily at 9 AM UTC. Adjust as needed.
+  workflow_dispatch:  # Allows manual triggering of the workflow.
 
 jobs:
-  fetch_stock_price:
+  fetch_price:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.8'
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'  # Specify the Python version
 
-      - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install boto3 vortex_api
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
 
-      - name: Run fetch_stock_price.py
-        env:
-          RUPEEZY_API_KEY: ${{ secrets.RUPEEZY_API_KEY }}
-          RUPEEZY_APPLICATION_ID: ${{ secrets.RUPEEZY_APPLICATION_ID }}
-          RUPEEZY_ACCESS_TOKEN: ${{ secrets.RUPEEZY_ACCESS_TOKEN }}
-        run: |
-          python rupeezy/fetch_stock_price.py
-
-      - name: Upload logs
-        uses: actions/upload-artifact@v3
-        with:
-          name: fetch-stock-price-logs
-          path: logs/
+    - name: Run fetch_stock_price script
+      env:
+        RUPEEZY_API_KEY: ${{ secrets.RUPEEZY_API_KEY }}
+        RUPEEZY_APPLICATION_ID: ${{ secrets.RUPEEZY_APPLICATION_ID }}
+        RUPEEZY_ACCESS_TOKEN: ${{ secrets.RUPEEZY_ACCESS_TOKEN }}
+      run: |
+        python rupeezy/fetch_stock_price.py
