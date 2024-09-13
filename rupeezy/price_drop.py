@@ -157,19 +157,17 @@ def process_additional_quantity():
 # Keep the SDK constant for "validity"
 def prepare_order_details(instrument_token, quantity):
     return {
-        "exchange": Vc.ExchangeTypes.NSE_EQUITY,  # Use SDK constant for exchange
+        "exchange": Vc.ExchangeTypes.NSE_EQUITY,
         "token": instrument_token,
-        "transaction_type": Vc.TransactionSides.BUY,  # Use SDK constant for transaction type
-        "product": Vc.ProductTypes.DELIVERY,  # Use SDK constant for product type
-        "variety": Vc.VarietyTypes.REGULAR_MARKET_ORDER,  # Use SDK constant for order variety
+        "transaction_type": Vc.TransactionSides.BUY,
+        "product": Vc.ProductTypes.DELIVERY,
+        "variety": Vc.VarietyTypes.REGULAR_MARKET_ORDER,
         "quantity": quantity,
         "price": 0.0,
         "trigger_price": 0.0,
         "disclosed_quantity": 0,
-        "validity": Vc.ValidityTypes.FULL_DAY,  # Use SDK constant for validity
-        "is_amo": False  # Remove "validity_days"
+        "validity": Vc.ValidityTypes.FULL_DAY  # No "is_amo" here
     }
-
 
 # Function to place an order via the broker's API using the prepared order details
 def trigger_order_via_sdk(client, order_details):
