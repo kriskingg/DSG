@@ -3,6 +3,7 @@ import boto3  # AWS SDK for Python to interact with AWS services (in this case, 
 from decimal import Decimal  # Module to handle decimal numbers for accuracy in currency values
 from vortex_api import AsthaTradeVortexAPI, Constants as Vc  # Broker API SDK and constants
 import os  # Required for fetching environment variables
+from botocore.exceptions import ClientError  # Import ClientError for DynamoDB exceptions
 
 # Set up basic logging configuration to capture and display log messages
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -17,17 +18,39 @@ api_secret = os.getenv('RUPEEZY_API_KEY')  # Fetch the API key from environment 
 application_id = os.getenv('RUPEEZY_APPLICATION_ID')  # Fetch the Application ID
 access_token = os.getenv('RUPEEZY_ACCESS_TOKEN')  # Fetch the access token
 
+# Ensure the environment variables are properly set
+if not api_secret or not application_id or not access_token:
+    logging.error("API credentials not properly set in environment variables")
+    exit(1)
+
 # Create an instance of the AsthaTradeVortexAPI client with the fetched credentials
 client = AsthaTradeVortexAPI(api_secret, application_id)
 client.access_token = access_token  # Set the access token for making authenticated API requests
 
 # Function to fetch the current stock price using the instrument token via the broker's API
+# Function to fetch the current stock price using the instrument token via the broker's API
 def get_current_price(instrument_token):
     try:
         # Call the broker's API to get the Last Traded Price (LTP) for the given stock token
         response = client.quotes([f"NSE_EQ-{instrument_token}"], mode=Vc.QuoteModes.LTP)
-        # Return the last traded price (LTP) as a Decimal, or 0 if the value isn't found
-        return Decimal(response['data'][0].get('ltp', 0))
+        
+        # Log the full response from the quotes API, including the structure
+        logging.debug(f"Full response from quotes API for token {instrument_token}: {response}")
+        
+        # Check if 'data' and 'ltp' are present in the response, log any missing keys
+        if 'data' not in response or not response['data']:
+            logging.error(f"Missing 'data' in response for token {instrument_token}: {response}")
+            return None
+        
+        # Fetch the LTP (Last Traded Price) from the response
+        ltp = response['data'][0].get('ltp', 0)
+        
+        # If LTP is 0, log it and return None
+        if ltp == 0:
+            logging.error(f"Received LTP as 0 for token {instrument_token}: {response}")
+            return None
+        
+        return Decimal(ltp)  # Return the LTP as a Decimal
     except Exception as e:  # Handle and log any errors encountered during the API call
         logging.error(f"Error fetching current price for token {instrument_token}: {str(e)}")
         return None  # Return None if the API call fails
@@ -36,7 +59,7 @@ def get_current_price(instrument_token):
 def check_available_funds():
     try:
         response = client.funds()  # Call the SDK method to get funds
-        logging.debug(f"Full response from funds API: {response}")
+        logging.debug(f"Full response from funds API: {response}")  # Log the full API response
         # Attempt to extract available funds only if 'data' exists in response
         available_funds = Decimal(response.get('nse', {}).get('net_available', 0))
         return available_funds
@@ -117,7 +140,6 @@ def process_additional_quantity():
         else:
             # If the percentage drop is less than 1%, log a message and take no action
             logging.info(f"{instrument} is down by {percentage_drop:.2f}% - No action taken")
-
 
 # Function to prepare the order details for placing an order via the broker's API
 def prepare_order_details(instrument_token, quantity):
