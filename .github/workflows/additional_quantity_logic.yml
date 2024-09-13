@@ -33,7 +33,12 @@ jobs:
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws configure set region ap-south-1
 
-      # Run the price drop strategy script with the correct env variables
+      # Step 1: Run the eligibility check script before placing orders
+      - name: Run Stock Eligibility and Price Check Script
+        run: |
+          python rupeezy/beest_eligibility_and_price_check.py
+
+      # Step 2: Run the price drop strategy script
       - name: Run Price Drop Strategy Script
         run: |
           python rupeezy/price_drop.py
@@ -43,3 +48,10 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ap-south-1
+
+      # # Step 3: Upload the order_ids.txt file as an artifact
+      # - name: Upload order_ids.txt as an artifact
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: order_ids
+      #     path: order_ids.txt
