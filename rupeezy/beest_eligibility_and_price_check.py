@@ -100,6 +100,9 @@ def update_stock_eligibility():
     now = datetime.now(pytz.timezone('Asia/Kolkata'))
     current_time = now.strftime("%Y-%m-%dT%H:%M:%S")
 
+    # Log the time for debugging
+    logging.info(f"Current time (Asia/Kolkata): {current_time}")
+
     # Fetch data from Chartink
     chartink_data = fetch_chartink_data(condition)
     if not chartink_data:  # If no data was fetched, exit the function
@@ -108,10 +111,14 @@ def update_stock_eligibility():
 
     # Create a set of eligible instruments based on the Chartink response
     eligible_instruments = {item['nsecode'] for item in chartink_data['data']}
-    
+    logging.info(f"Fetched eligible instruments from Chartink: {eligible_instruments}")
+
     # Fetch all stocks from the DynamoDB StockEligibility table
     all_stocks = fetch_all_stocks_from_dynamodb()
-    
+
+    # Echo all stocks from DynamoDB
+    logging.info(f"Fetched all stocks from DynamoDB: {[stock['InstrumentName']['S'] for stock in all_stocks]}")
+
     # Loop through each stock in the DynamoDB table
     for stock in all_stocks:
         instrument_name = stock['InstrumentName']['S'].strip()  # Extract and clean the instrument name (stock ticker)
@@ -119,12 +126,12 @@ def update_stock_eligibility():
 
         # Set the eligibility status based on whether the stock is eligible or not
         eligibility_status = 'Eligible' if is_eligible else 'Ineligible'
-        
-        # Log the stock's current status for visibility
-        logging.debug(f"Processing {instrument_name}: Current EligibilityStatus={stock['EligibilityStatus']['S']}, "
-                      f"New EligibilityStatus={eligibility_status}, BaseValue={stock.get('BaseValue', {}).get('N', 'None')}")
 
-        # **Refined BaseValue Logic**: Reset BaseValue if eligibility changes
+        # Log the current stock status before processing
+        logging.info(f"Processing {instrument_name}: Current EligibilityStatus={stock['EligibilityStatus']['S']}, "
+                     f"New EligibilityStatus={eligibility_status}, BaseValue={stock.get('BaseValue', {}).get('N', 'None')}")
+
+        # **BaseValue Logic**: Reset BaseValue if eligibility changes
         if stock['EligibilityStatus']['S'].strip() != eligibility_status:
             # Reset BaseValue only if there is an eligibility change
             base_value = '-1'
@@ -134,23 +141,23 @@ def update_stock_eligibility():
             base_value = stock.get('BaseValue', {}).get('N', '0')
             logging.info(f"No eligibility change for {instrument_name}. Keeping BaseValue: {base_value}")
 
-        # Log the update for the stock
-        logging.info(f"Updating {instrument_name} as {eligibility_status} in DynamoDB.")
-        
+        # Log the decision for this stock before updating DynamoDB
+        logging.info(f"Updating {instrument_name}: EligibilityStatus={eligibility_status}, BaseValue={base_value}, LastUpdated={current_time}")
+
         # Update the stock's eligibility status, base value, and last updated time in DynamoDB
         try:
             dynamodb.update_item(
                 TableName='StockEligibility',  # Specify the DynamoDB table to update
                 Key={
                     'InstrumentName': {'S': instrument_name},  # Primary key: instrument name
-                    'Eligibility': {'S': stock['Eligibility']['S'].strip()}  # Sort key: eligibility, cleaned
+                    'Eligibility': {'S': stock['Eligibility']['S'].strip()}  # Sort key: eligibility
                 },
                 # Update expression to set the new eligibility status, base value, and last updated timestamp
                 UpdateExpression="SET EligibilityStatus = :elig, LastUpdated = :lu, BaseValue = :bv",
                 ExpressionAttributeValues={
                     ':elig': {'S': eligibility_status.strip()},  # Set eligibility status
                     ':lu': {'S': current_time},  # Set the last updated timestamp
-                    ':bv': {'N': str(base_value)}  # Reset BaseValue if necessary
+                    ':bv': {'N': str(base_value)}  # Set BaseValue
                 }
             )
             logging.info(f"Successfully updated {instrument_name} to {eligibility_status}.")
@@ -158,3 +165,4 @@ def update_stock_eligibility():
             # Log any errors that occur during the update
             logging.error(f"Error updating {instrument_name} in DynamoDB: {e}")
 
+    logging.info("Stock eligibility update process completed.")
