@@ -93,6 +93,7 @@ def fetch_all_stocks_from_dynamodb():
         return []  # Return an empty list if an error occurs
 
 # Function to update the eligibility status of stocks based on Chartink data
+# Function to update the eligibility status of stocks based on Chartink data
 def update_stock_eligibility():
     """Update stock eligibility based on Chartink data and update DynamoDB records."""
     # Get the current time in the Asia/Kolkata time zone
@@ -120,8 +121,12 @@ def update_stock_eligibility():
         # Set the eligibility status based on whether the stock is eligible or not
         eligibility_status = 'Eligible' if is_eligible else 'Ineligible'
 
-        # If stock becomes Ineligible, reset BaseValue to -1
-        base_value = '-1' if not is_eligible else stock.get('BaseValue', {'N': '0'})['N']  # If ineligible, reset BaseValue to -1
+        # Update the BaseValue logic to reset BaseValue to -1 when the stock becomes eligible or ineligible
+        # BaseValue should be reset if the stock becomes eligible again or ineligible
+        if stock['EligibilityStatus']['S'].strip() != eligibility_status:
+            base_value = '-1'  # Reset BaseValue when eligibility changes
+        else:
+            base_value = stock.get('BaseValue', {'N': '0'})['N']  # Keep the existing BaseValue if eligibility hasn't changed
 
         # Log the update for the stock
         logging.info(f"Updating {instrument_name} as {eligibility_status} in DynamoDB.")
@@ -139,16 +144,10 @@ def update_stock_eligibility():
                 ExpressionAttributeValues={
                     ':elig': {'S': eligibility_status.strip()},  # Set eligibility status and ensure no extra spaces
                     ':lu': {'S': current_time},  # Set the last updated timestamp
-                    ':bv': {'N': base_value}  # Set BaseValue, reset to -1 if ineligible
+                    ':bv': {'N': base_value}  # Reset BaseValue to -1 if the stock becomes eligible/ineligible
                 }
             )
             logging.info(f"Successfully updated {instrument_name} to {eligibility_status}.")
         except Exception as e:
             # Log any errors that occur during the update
             logging.error(f"Error updating {instrument_name} in DynamoDB: {e}")
-
-# Main execution block: This runs when the script is executed directly
-if __name__ == "__main__":
-    logging.info("Starting stock eligibility update process...")
-    update_stock_eligibility()  # Call the function to update stock eligibility
-    logging.info("Stock eligibility update process completed.")
