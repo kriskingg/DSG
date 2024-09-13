@@ -55,6 +55,7 @@ def get_current_price(instrument_token):
         logging.error(f"Error fetching current price for token {instrument_token}: {str(e)}")
         return None  # Return None if the API call fails
 
+
 # Function to check the user's available funds via the broker's API
 def check_available_funds():
     try:
