@@ -44,23 +44,25 @@ def get_current_price(instrument_token):
         # Log the full response from the quotes API, including the structure
         logging.debug(f"Full response from quotes API for token {instrument_token}: {response}")
         
-        # Check if 'data' and 'ltp' are present in the response, log any missing keys
-        if 'data' not in response or not response['data']:
-            logging.error(f"Missing 'data' in response for token {instrument_token}: {response}")
+        # Check if 'data' exists and contains the token key
+        if 'data' not in response or f"NSE_EQ-{instrument_token}" not in response['data']:
+            logging.error(f"Missing data or token key in response for token {instrument_token}: {response}")
             return None
         
-        # Fetch the LTP (Last Traded Price) from the response
-        ltp = response['data'][0].get('ltp', 0)
+        # Extract the Last Traded Price (LTP) using the token key
+        ltp = response['data'][f"NSE_EQ-{instrument_token}"].get('last_trade_price', 0)
         
         # If LTP is 0, log it and return None
         if ltp == 0:
             logging.error(f"Received LTP as 0 for token {instrument_token}: {response}")
             return None
         
-        return Decimal(ltp)  # Return the LTP as a Decimal
-    except Exception as e:  # Handle and log any errors encountered during the API call
+        # Convert to Decimal and round to two decimal places
+        return Decimal(ltp).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    except Exception as e:
         logging.error(f"Error fetching current price for token {instrument_token}: {str(e)}")
-        return None  # Return None if the API call fails
+        return None
+
 
 # Function to check the user's available funds via the broker's API
 def check_available_funds():
