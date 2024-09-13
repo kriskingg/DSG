@@ -5,6 +5,7 @@ from vortex_api import AsthaTradeVortexAPI, Constants as Vc  # Broker API SDK an
 import os  # Required for fetching environment variables
 from botocore.exceptions import ClientError  # Import ClientError for DynamoDB exceptions
 from decimal import Decimal, ROUND_HALF_UP  # Ensure ROUND_HALF_UP is imported
+import time  # Add the time module at the top for using sleep
 
 # Set up basic logging configuration to capture and display log messages
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -151,6 +152,7 @@ def process_additional_quantity():
                     if response:
                         order_id = response['data']['orderId']
                         order_file.write(f"{order_id}\n")
+                        time.sleep(5)  # Sleep for 5 seconds before fetching order details
                         fetch_order_details(client, order_id)  # Fetch and log order details
                     available_funds -= total_cost  # Deduct the cost from available funds after placing the order
                 else:
@@ -164,6 +166,7 @@ def process_additional_quantity():
                     if response:
                         order_id = response['data']['orderId']
                         order_file.write(f"{order_id}\n")
+                        time.sleep(5)  # Sleep for 5 seconds before fetching order details
                         fetch_order_details(client, order_id)  # Fetch and log order details
                     available_funds -= total_cost  # Deduct the cost from available funds after placing the order
                 else:
