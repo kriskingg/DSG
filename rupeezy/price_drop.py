@@ -153,6 +153,8 @@ def process_additional_quantity():
             logging.info(f"{instrument} is down by {percentage_drop:.2f}% - No action taken")
 
 # Function to prepare the order details for placing an order via the broker's API
+# Remove "validity_days": 1
+# Keep the SDK constant for "validity"
 def prepare_order_details(instrument_token, quantity):
     return {
         "exchange": Vc.ExchangeTypes.NSE_EQUITY,  # Use SDK constant for exchange
@@ -165,8 +167,7 @@ def prepare_order_details(instrument_token, quantity):
         "trigger_price": 0.0,
         "disclosed_quantity": 0,
         "validity": Vc.ValidityTypes.FULL_DAY,  # Use SDK constant for validity
-        "validity_days": 1,
-        "is_amo": False
+        "is_amo": False  # Remove "validity_days"
     }
 
 
