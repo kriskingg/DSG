@@ -154,29 +154,28 @@ def process_additional_quantity():
 
 # Function to prepare the order details for placing an order via the broker's API
 def prepare_order_details(instrument_token, quantity):
-    # Return a dictionary containing all the necessary details for placing a market order
     return {
-        "exchange": "NSE_EQ",  # Specify the exchange (NSE Equity)
-        "token": instrument_token,  # Stock token for identifying the stock
-        "transaction_type": "BUY",  # Specify the transaction type (Buy order)
-        "product": "DELIVERY",  # Specify the product type (Delivery)
-        "variety": "RL-MKT",  # Specify the order variety (Market order)
-        "quantity": quantity,  # The number of stocks to buy
-        "price": 0.0,  # Set the price to 0 for market orders
-        "trigger_price": 0.0,  # No trigger price needed for market orders
-        "disclosed_quantity": 0,  # No disclosed quantity
-        "validity": "DAY",  # Specify that the order is valid for the day
-        "validity_days": 1,  # The order is valid for 1 day
-        "is_amo": False  # The order is not an after-market order
+        "exchange": Vc.Exchange.NSE_EQ,  # Use SDK constant for exchange
+        "token": instrument_token,
+        "transaction_type": Vc.TransactionType.BUY,  # Use SDK constant for transaction type
+        "product": Vc.ProductType.DELIVERY,  # Use SDK constant for product type
+        "variety": Vc.VarietyType.REGULAR_MARKET_ORDER,  # Use SDK constant for order variety
+        "quantity": quantity,
+        "price": 0.0,
+        "trigger_price": 0.0,
+        "disclosed_quantity": 0,
+        "validity": "DAY",
+        "validity_days": 1,
+        "is_amo": False
     }
+
 
 # Function to place an order via the broker's API using the prepared order details
 def trigger_order_via_sdk(client, order_details):
     try:
-        # Place the order via the broker's API
-        response = client.place_order(**order_details)
-        logging.info(f"Order placed successfully: {response}")  # Log the response from the API
-    except Exception as e:  # Handle and log any errors encountered during the order placement
+        response = client.place_order(**order_details)  # Place order using SDK method
+        logging.info(f"Order placed successfully: {response}")
+    except Exception as e:
         logging.error(f"Error placing order: {str(e)}")
 
 # Main function to run when the script is executed
