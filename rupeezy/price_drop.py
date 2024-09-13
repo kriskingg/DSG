@@ -18,16 +18,23 @@ api_secret = os.getenv('RUPEEZY_API_KEY')  # Fetch the API key from environment 
 application_id = os.getenv('RUPEEZY_APPLICATION_ID')  # Fetch the Application ID
 access_token = os.getenv('RUPEEZY_ACCESS_TOKEN')  # Fetch the access token
 
-# Ensure the environment variables are properly set
+# Ensure the environment variables are properly set and log detailed errors if they are missing
+if not api_secret:
+    logging.error("RUPEEZY_API_KEY environment variable is missing.")
+if not application_id:
+    logging.error("RUPEEZY_APPLICATION_ID environment variable is missing.")
+if not access_token:
+    logging.error("RUPEEZY_ACCESS_TOKEN environment variable is missing.")
+
+# Exit if any of the environment variables are missing
 if not api_secret or not application_id or not access_token:
-    logging.error("API credentials not properly set in environment variables")
+    logging.error("One or more API credentials are missing. Exiting script.")
     exit(1)
 
 # Create an instance of the AsthaTradeVortexAPI client with the fetched credentials
 client = AsthaTradeVortexAPI(api_secret, application_id)
 client.access_token = access_token  # Set the access token for making authenticated API requests
 
-# Function to fetch the current stock price using the instrument token via the broker's API
 # Function to fetch the current stock price using the instrument token via the broker's API
 def get_current_price(instrument_token):
     try:
@@ -54,7 +61,6 @@ def get_current_price(instrument_token):
     except Exception as e:  # Handle and log any errors encountered during the API call
         logging.error(f"Error fetching current price for token {instrument_token}: {str(e)}")
         return None  # Return None if the API call fails
-
 
 # Function to check the user's available funds via the broker's API
 def check_available_funds():
