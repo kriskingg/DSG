@@ -32,7 +32,7 @@ jobs:
           RUPEEZY_APPLICATION_ID: ${{ secrets.RUPEEZY_APPLICATION_ID }}
           RUPEEZY_ACCESS_TOKEN: ${{ secrets.RUPEEZY_ACCESS_TOKEN }}
         run: |
-          python fetch_stock_price.py
+          python rupeezy/fetch_stock_price.py
 
       - name: Upload logs
         uses: actions/upload-artifact@v3
