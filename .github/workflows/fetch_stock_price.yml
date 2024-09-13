@@ -1,19 +1,16 @@
 name: Fetch Stock Price
 
 on:
-  # Define triggers for the workflow
+  # Existing triggers
   schedule:
-    # Runs every hour
     - cron: '0 * * * *'
-  # You can also add other triggers, such as:
-  # push:
-  #   branches:
-  #     - main
-  # workflow_dispatch:  # Allows you to manually trigger the workflow from GitHub UI
+  
+  # Add this to allow manual triggers
+  workflow_dispatch:
 
 jobs:
   fetch_stock_price:
-    runs-on: ubuntu-latest  # The runner environment
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
@@ -22,12 +19,12 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.8'  # Set the Python version to use
+          python-version: '3.8'
 
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install boto3 vortex_api  # Install the required libraries
+          pip install boto3 vortex_api
 
       - name: Run fetch_stock_price.py
         env:
@@ -41,4 +38,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: fetch-stock-price-logs
-          path: logs/  # Adjust the path if your logs are stored elsewhere
+          path: logs/
