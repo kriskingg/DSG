@@ -83,6 +83,17 @@ def calculate_percentage_drop(base_value, current_price):
     # Formula to calculate percentage drop: (BaseValue - CurrentPrice) / BaseValue * 100
     return ((base_value - current_price) / base_value) * 100
 
+# Function to fetch the order details after placing an order
+def fetch_order_details(client, order_id):
+    """Fetch order details for a given order ID."""
+    try:
+        response = client.order_history(order_id)  # Fetch the order history based on order_id
+        logging.info(f"Order Details for {order_id}: {response}")  # Log the fetched details
+        return response  # Return the response for use later
+    except Exception as e:
+        logging.error(f"Error fetching order details for {order_id}: {str(e)}")
+        return None
+
 # Main function to process stocks for additional quantity logic based on percentage drop
 def process_additional_quantity():
     # Fetch available funds first by calling the broker API
@@ -140,6 +151,7 @@ def process_additional_quantity():
                     if response:
                         order_id = response['data']['orderId']
                         order_file.write(f"{order_id}\n")
+                        fetch_order_details(client, order_id)  # Fetch and log order details
                     available_funds -= total_cost  # Deduct the cost from available funds after placing the order
                 else:
                     # Log a warning if there are not enough funds to place the order
@@ -152,6 +164,7 @@ def process_additional_quantity():
                     if response:
                         order_id = response['data']['orderId']
                         order_file.write(f"{order_id}\n")
+                        fetch_order_details(client, order_id)  # Fetch and log order details
                     available_funds -= total_cost  # Deduct the cost from available funds after placing the order
                 else:
                     # Log a warning if there are not enough funds to place the order
