@@ -4,6 +4,7 @@ from decimal import Decimal  # Module to handle decimal numbers for accuracy in 
 from vortex_api import AsthaTradeVortexAPI, Constants as Vc  # Broker API SDK and constants
 import os  # Required for fetching environment variables
 from botocore.exceptions import ClientError  # Import ClientError for DynamoDB exceptions
+from decimal import Decimal, ROUND_HALF_UP  # Ensure ROUND_HALF_UP is imported
 
 # Set up basic logging configuration to capture and display log messages
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -44,21 +45,22 @@ def get_current_price(instrument_token):
         # Log the full response from the quotes API, including the structure
         logging.debug(f"Full response from quotes API for token {instrument_token}: {response}")
         
-        # Check if 'data' exists and contains the token key
+        # Check if 'data' and 'NSE_EQ-{instrument_token}' are present in the response
         if 'data' not in response or f"NSE_EQ-{instrument_token}" not in response['data']:
             logging.error(f"Missing data or token key in response for token {instrument_token}: {response}")
             return None
         
-        # Extract the Last Traded Price (LTP) using the token key
+        # Extract the Last Traded Price (LTP)
         ltp = response['data'][f"NSE_EQ-{instrument_token}"].get('last_trade_price', 0)
         
-        # If LTP is 0, log it and return None
         if ltp == 0:
             logging.error(f"Received LTP as 0 for token {instrument_token}: {response}")
             return None
         
         # Convert to Decimal and round to two decimal places
-        return Decimal(ltp).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        price = Decimal(ltp).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        
+        return price
     except Exception as e:
         logging.error(f"Error fetching current price for token {instrument_token}: {str(e)}")
         return None
