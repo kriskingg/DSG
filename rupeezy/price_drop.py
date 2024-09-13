@@ -91,70 +91,76 @@ def process_additional_quantity():
         logging.error("Unable to retrieve available funds. Skipping all orders.")
         return
 
-    # Scan the DynamoDB table for stocks that are eligible and have AdditionalQuantity > 0
-    try:
-        response = table.scan(
-            FilterExpression="EligibilityStatus = :status AND AdditionalQuantity > :qty",
-            ExpressionAttributeValues={':status': 'Eligible', ':qty': Decimal('0')}
-        )
-        items = response.get('Items', [])
-    except ClientError as e:
-        logging.error(f"Error scanning DynamoDB table: {e}")
-        return
+    # Open the file to save order IDs (artifact for tracking placed orders)
+    with open("order_ids.txt", "w") as order_file:
+        # Scan the DynamoDB table for stocks that are eligible and have AdditionalQuantity > 0
+        try:
+            response = table.scan(
+                FilterExpression="EligibilityStatus = :status AND AdditionalQuantity > :qty",
+                ExpressionAttributeValues={':status': 'Eligible', ':qty': Decimal('0')}
+            )
+            items = response.get('Items', [])
+        except ClientError as e:
+            logging.error(f"Error scanning DynamoDB table: {e}")
+            return
 
-    # Loop through each eligible stock in the DynamoDB table
-    for item in items:
-        instrument = item.get('InstrumentName', '')  # Fetch the stock symbol (InstrumentName)
-        instrument_token = int(item.get('Token', 0))  # Fetch the stock's token for API requests
-        additional_quantity = int(item.get('AdditionalQuantity', 0))  # Fetch the additional quantity
+        # Loop through each eligible stock in the DynamoDB table
+        for item in items:
+            instrument = item.get('InstrumentName', '')  # Fetch the stock symbol (InstrumentName)
+            instrument_token = int(item.get('Token', 0))  # Fetch the stock's token for API requests
+            additional_quantity = int(item.get('AdditionalQuantity', 0))  # Fetch the additional quantity
 
-        # Check if the stock has a valid BaseValue (initial purchase price), and skip if not
-        base_value = item.get('BaseValue', None)
-        if base_value is None or Decimal(base_value) <= 0:
-            logging.info(f"{instrument} does not have a valid BaseValue. Skipping.")
-            continue  # Skip this stock if there's no valid BaseValue
+            # Check if the stock has a valid BaseValue (initial purchase price), and skip if not
+            base_value = item.get('BaseValue', None)
+            if base_value is None or Decimal(base_value) <= 0:
+                logging.info(f"{instrument} does not have a valid BaseValue. Skipping.")
+                continue  # Skip this stock if there's no valid BaseValue
 
-        # Convert BaseValue to a Decimal for accurate calculations
-        base_value = Decimal(base_value)
+            # Convert BaseValue to a Decimal for accurate calculations
+            base_value = Decimal(base_value)
 
-        # Fetch the current stock price from the broker's API
-        current_price = get_current_price(instrument_token)
-        if current_price is None:  # If the current price could not be retrieved, skip this stock
-            logging.info(f"Could not fetch the current price for {instrument}. Skipping.")
-            continue
+            # Fetch the current stock price from the broker's API
+            current_price = get_current_price(instrument_token)
+            if current_price is None:  # If the current price could not be retrieved, skip this stock
+                logging.info(f"Could not fetch the current price for {instrument}. Skipping.")
+                continue
 
-        # Calculate the percentage drop between the BaseValue and the current price
-        percentage_drop = calculate_percentage_drop(base_value, current_price)
+            # Calculate the percentage drop between the BaseValue and the current price
+            percentage_drop = calculate_percentage_drop(base_value, current_price)
 
-        # Calculate the total cost of buying additional stocks based on the current price and quantity
-        total_cost = current_price * additional_quantity
+            # Calculate the total cost of buying additional stocks based on the current price and quantity
+            total_cost = current_price * additional_quantity
 
-        # Check if the available funds are sufficient for the calculated total cost
-        if percentage_drop >= 2:  # If the price has dropped by 2% or more
-            total_cost = current_price * 2 * additional_quantity  # Update the total cost for 2x additional quantity
-            if total_cost <= available_funds:  # If funds are sufficient, place the order
-                logging.info(f"{instrument} is down by {percentage_drop:.2f}% - Buying twice the AdditionalQuantity ({2 * additional_quantity} units)")
-                trigger_order_via_sdk(client, prepare_order_details(instrument_token, 2 * additional_quantity))
-                available_funds -= total_cost  # Deduct the cost from available funds after placing the order
+            # Check if the available funds are sufficient for the calculated total cost
+            if percentage_drop >= 2:  # If the price has dropped by 2% or more
+                total_cost = current_price * 2 * additional_quantity  # Update the total cost for 2x additional quantity
+                if total_cost <= available_funds:  # If funds are sufficient, place the order
+                    logging.info(f"{instrument} is down by {percentage_drop:.2f}% - Buying twice the AdditionalQuantity ({2 * additional_quantity} units)")
+                    response = trigger_order_via_sdk(client, prepare_order_details(instrument_token, 2 * additional_quantity))
+                    if response:
+                        order_id = response['data']['orderId']
+                        order_file.write(f"{order_id}\n")
+                    available_funds -= total_cost  # Deduct the cost from available funds after placing the order
+                else:
+                    # Log a warning if there are not enough funds to place the order
+                    logging.warning(f"Not enough funds to buy twice the AdditionalQuantity for {instrument}. Available: {available_funds}, Required: {total_cost}")
+
+            elif percentage_drop >= 1:  # If the price has dropped by 1% or more
+                if total_cost <= available_funds:  # If funds are sufficient, place the order
+                    logging.info(f"{instrument} is down by {percentage_drop:.2f}% - Buying the AdditionalQuantity ({additional_quantity} units)")
+                    response = trigger_order_via_sdk(client, prepare_order_details(instrument_token, additional_quantity))
+                    if response:
+                        order_id = response['data']['orderId']
+                        order_file.write(f"{order_id}\n")
+                    available_funds -= total_cost  # Deduct the cost from available funds after placing the order
+                else:
+                    # Log a warning if there are not enough funds to place the order
+                    logging.warning(f"Not enough funds to buy the AdditionalQuantity for {instrument}. Available: {available_funds}, Required: {total_cost}")
             else:
-                # Log a warning if there are not enough funds to place the order
-                logging.warning(f"Not enough funds to buy twice the AdditionalQuantity for {instrument}. Available: {available_funds}, Required: {total_cost}")
-
-        elif percentage_drop >= 1:  # If the price has dropped by 1% or more
-            if total_cost <= available_funds:  # If funds are sufficient, place the order
-                logging.info(f"{instrument} is down by {percentage_drop:.2f}% - Buying the AdditionalQuantity ({additional_quantity} units)")
-                trigger_order_via_sdk(client, prepare_order_details(instrument_token, additional_quantity))
-                available_funds -= total_cost  # Deduct the cost from available funds after placing the order
-            else:
-                # Log a warning if there are not enough funds to place the order
-                logging.warning(f"Not enough funds to buy the AdditionalQuantity for {instrument}. Available: {available_funds}, Required: {total_cost}")
-        else:
-            # If the percentage drop is less than 1%, log a message and take no action
-            logging.info(f"{instrument} is down by {percentage_drop:.2f}% - No action taken")
+                # If the percentage drop is less than 1%, log a message and take no action
+                logging.info(f"{instrument} is down by {percentage_drop:.2f}% - No action taken")
 
 # Function to prepare the order details for placing an order via the broker's API
-# Remove "validity_days": 1
-# Keep the SDK constant for "validity"
 def prepare_order_details(instrument_token, quantity):
     return {
         "exchange": Vc.ExchangeTypes.NSE_EQUITY,
@@ -166,7 +172,7 @@ def prepare_order_details(instrument_token, quantity):
         "price": 0.0,
         "trigger_price": 0.0,
         "disclosed_quantity": 0,
-        "validity": Vc.ValidityTypes.FULL_DAY  # No "is_amo" here
+        "validity": Vc.ValidityTypes.FULL_DAY
     }
 
 # Function to place an order via the broker's API using the prepared order details
@@ -174,8 +180,10 @@ def trigger_order_via_sdk(client, order_details):
     try:
         response = client.place_order(**order_details)  # Place order using SDK method
         logging.info(f"Order placed successfully: {response}")
+        return response
     except Exception as e:
         logging.error(f"Error placing order: {str(e)}")
+        return None
 
 # Main function to run when the script is executed
 if __name__ == "__main__":

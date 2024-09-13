@@ -50,9 +50,9 @@ jobs:
           AWS_DEFAULT_REGION: ap-south-1
           RUPEEZY_APPLICATION_ID: dev_3sK5DZDR
 
-      # # Step 3: Upload the order_ids.txt file as an artifact
-      # - name: Upload order_ids.txt as an artifact
-      #   uses: actions/upload-artifact@v3
-      #   with:
-      #     name: order_ids
-      #     path: order_ids.txt
+      # Step 3: Upload the order_ids.txt file as an artifact (enabled now)
+      - name: Upload order_ids.txt as an artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: order_ids
+          path: order_ids.txt
