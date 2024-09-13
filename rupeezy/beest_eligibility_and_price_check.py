@@ -133,6 +133,9 @@ def update_stock_eligibility():
 
         # **BaseValue Logic**: Reset BaseValue if eligibility changes
         if stock['EligibilityStatus']['S'].strip() != eligibility_status:
+            # Log if there is a change in eligibility status
+            logging.info(f"Eligibility status change for {instrument_name}. Old: {stock['EligibilityStatus']['S']}, New: {eligibility_status}")
+
             # Reset BaseValue only if there is an eligibility change
             base_value = '-1'
             logging.info(f"Eligibility change detected for {instrument_name}. Resetting BaseValue to -1.")
