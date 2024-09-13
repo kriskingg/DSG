@@ -105,6 +105,7 @@ def update_base_value_in_dynamodb(instrument_name, base_value):
         logging.error(f"Error updating BaseValue for {instrument_name}: {str(e)}")
 
 # The main script execution starts here
+# Main script execution starts here
 if __name__ == "__main__":
     # Fetch eligible stocks from the DynamoDB 'StockEligibility' table
     eligible_stocks = fetch_eligible_stocks_from_dynamodb()
@@ -150,12 +151,19 @@ if __name__ == "__main__":
                     # Fetch the order details immediately after placing the order
                     order_details_response = fetch_order_details(client, order_id)
                     
-                    # Update the BaseValue in DynamoDB with the fetched order price
-                    if order_details_response and 'data' in order_details_response:
-                        base_value = order_details_response['data'][0].get('order_price', 0)  # Extract the order price as the BaseValue
-                        update_base_value_in_dynamodb(stock['InstrumentName']['S'], base_value)
+                    # Update the BaseValue in DynamoDB only if BaseValue is -1, null, or NA
+                    current_base_value = stock.get('BaseValue', {}).get('N', '-1')  # Retrieve BaseValue, default to '-1' if missing
+                    
+                    # ADDITIONAL CHECK: Make sure we are only setting the BaseValue once, and not every time.
+                    if current_base_value == '-1':  # If BaseValue is not set
+                        if order_details_response and 'data' in order_details_response:
+                            base_value = order_details_response['data'][0].get('order_price', 0)  # Extract the order price as the BaseValue
+                            update_base_value_in_dynamodb(stock['InstrumentName']['S'], base_value)
+                            logging.info(f"BaseValue for {stock['InstrumentName']['S']} updated to {base_value}")
+                    else:
+                        logging.info(f"BaseValue for {stock['InstrumentName']['S']} is already set to {current_base_value}. Skipping update.")
                 else:
                     logging.error(f"Order placement failed for {stock['InstrumentName']['S']}")
-
+        
         # Optionally, fetch current positions after placing all orders (currently not used in logic)
         fetch_positions(client)
