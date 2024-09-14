@@ -1,3 +1,10 @@
+# Key Points:
+# EligibilityStatus = "Eligible": Only stocks marked as eligible are processed for additional orders.
+# FirstDayProcessed = True: The stock must have passed the first-day order condition before considering additional purchases.
+# BaseValue > 0: Ensures the stock has a valid base price to calculate the percentage drop for subsequent buys.
+# AdditionalQuantity > 0: This check skips any stock that does not require additional quantities, preventing orders where the extra purchase count is set to zero.
+# This ensures there are no contradictions or unnecessary actions taken. Only eligible stocks with valid BaseValue, having passed the first-day order, and with a non-zero AdditionalQuantity, are considered for further orders based on price drops.
+
 import logging  # Python's built-in module for logging events and debugging messages
 import boto3  # AWS SDK for Python to interact with AWS services (in this case, DynamoDB)
 from decimal import Decimal  # Module to handle decimal numbers for accuracy in currency values
