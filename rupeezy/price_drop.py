@@ -128,7 +128,7 @@ def process_additional_quantity():
             instrument = item.get('InstrumentName', '')  # Fetch the stock symbol (InstrumentName)
             instrument_token = int(item.get('Token', 0))  # Fetch the stock's token for API requests
             additional_quantity = int(item.get('AdditionalQuantity', 0))  # Fetch the additional quantity
-            first_day_processed = item.get('FirstDayProcessed', {}).get('BOOL', False)  # Check the FirstDayProcessed flag
+            first_day_processed = item.get('FirstDayProcessed', False)  # Check the FirstDayProcessed flag
             base_value = item.get('BaseValue', None)
 
             # Ensure stock is eligible, has a valid BaseValue, FirstDayProcessed is True, and AdditionalQuantity > 0
