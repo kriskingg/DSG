@@ -132,9 +132,16 @@ def process_additional_quantity():
             base_value = item.get('BaseValue', None)
 
             # Ensure stock is eligible, has a valid BaseValue, FirstDayProcessed is True, and AdditionalQuantity > 0
-            if not first_day_processed or base_value is None or Decimal(base_value) <= 0 or additional_quantity == 0:
-                logging.info(f"Skipping {instrument} - Either FirstDayProcessed is False, BaseValue is invalid, or AdditionalQuantity is 0.")
+            if not first_day_processed:
+                logging.info(f"Skipping {instrument} - FirstDayProcessed is False.")
                 continue
+            if base_value is None or Decimal(base_value) <= 0:
+                logging.info(f"Skipping {instrument} - BaseValue is invalid or not greater than 0.")
+                continue
+            if additional_quantity == 0:
+                logging.info(f"Skipping {instrument} - AdditionalQuantity is 0.")
+                continue
+
 
             # Convert BaseValue to a Decimal for accurate calculations
             base_value = Decimal(base_value)
