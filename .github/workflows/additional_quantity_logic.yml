@@ -33,10 +33,10 @@ jobs:
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws configure set region ap-south-1
 
-      # Step 1: Run the eligibility check script before placing orders
-      - name: Run Stock Eligibility and Price Check Script
-        run: |
-          python rupeezy/beest_eligibility_and_price_check.py
+      # # Step 1: Run the eligibility check script before placing orders
+      # - name: Run Stock Eligibility and Price Check Script
+      #   run: |
+      #     python rupeezy/beest_eligibility_and_price_check.py
 
       # Step 2: Run the price drop strategy script
       - name: Run Price Drop Strategy Script
