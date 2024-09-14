@@ -104,66 +104,76 @@ def update_base_value_in_dynamodb(instrument_name, base_value):
     except Exception as e:  # Log errors if the update fails
         logging.error(f"Error updating BaseValue for {instrument_name}: {str(e)}")
 
+# Function to update the FirstDayProcessed flag in DynamoDB
+def update_first_day_processed_flag(instrument_name):
+    """Update the FirstDayProcessed flag to True in DynamoDB for a given instrument."""
+    try:
+        # Update the FirstDayProcessed field in DynamoDB to True
+        dynamodb.update_item(
+            TableName='StockEligibility',
+            Key={
+                'InstrumentName': {'S': instrument_name},
+                'Eligibility': {'S': 'Eligible'}
+            },
+            UpdateExpression="SET FirstDayProcessed = :fdp",
+            ExpressionAttributeValues={
+                ':fdp': {'BOOL': True}
+            }
+        )
+        logging.info(f"Updated FirstDayProcessed flag to True for {instrument_name}.")
+    except Exception as e:
+        logging.error(f"Error updating FirstDayProcessed for {instrument_name}: {str(e)}")
+
 # The main script execution starts here
-# Main script execution starts here
 if __name__ == "__main__":
-    # Fetch eligible stocks from the DynamoDB 'StockEligibility' table
     eligible_stocks = fetch_eligible_stocks_from_dynamodb()
 
     if not eligible_stocks:  # If no eligible stocks are found
         logging.info("No eligible stocks found.")
     else:
-        # Open the file to save order IDs (artifact for tracking placed orders)
         with open("order_ids.txt", "w") as order_file:
-            for stock in eligible_stocks:  # Loop through each eligible stock
-                # Check if the DefaultQuantity is greater than 0 before placing an order
+            for stock in eligible_stocks:
                 default_quantity = int(stock.get('DefaultQuantity', {}).get('N', 0))
-                if default_quantity == 0:  # Skip if DefaultQuantity is 0
+                if default_quantity == 0:
                     logging.info(f"Skipping order placement for {stock['InstrumentName']['S']} as DefaultQuantity is 0.")
                     continue
 
-                # Prepare the order details for placing the order
                 order_details = {
-                    "exchange": "NSE_EQ",  # Exchange type
-                    "token": int(stock['Token']['N']),  # Stock token from DynamoDB
-                    "symbol": stock['InstrumentName']['S'],  # Instrument name (stock symbol)
-                    "transaction_type": "BUY",  # Always a "BUY" in this context
-                    "product": "DELIVERY",  # Product type
-                    "variety": "RL-MKT",  # Market order (can modify)
-                    "quantity": default_quantity,  # Quantity to buy based on DynamoDB data
-                    "price": 0.0,  # Market orders have 0 price
-                    "trigger_price": 0.0,  # Trigger price (0 for market order)
-                    "disclosed_quantity": 0,  # No disclosed quantity
-                    "validity": "DAY",  # Full-day validity
-                    "validity_days": 1,  # Valid for 1 day
-                    "is_amo": False  # Not an after-market order
+                    "exchange": "NSE_EQ",
+                    "token": int(stock['Token']['N']),
+                    "symbol": stock['InstrumentName']['S'],
+                    "transaction_type": "BUY",
+                    "product": "DELIVERY",
+                    "variety": "RL-MKT",
+                    "quantity": default_quantity,
+                    "price": 0.0,
+                    "trigger_price": 0.0,
+                    "disclosed_quantity": 0,
+                    "validity": "DAY",
+                    "validity_days": 1,
+                    "is_amo": False
                 }
 
                 # Place the order and get the response
                 response = trigger_order_via_sdk(client, order_details)
-                if response:  # If the order is placed successfully
+                if response:
                     order_id = response['data']['orderId']  # Extract the order ID from the response
                     logging.info(f"Order placed successfully for {stock['InstrumentName']['S']}: {response}")
-                    
-                    # Save the order ID to the artifact file for future tracking
                     order_file.write(f"{order_id}\n")
-                    
-                    # Fetch the order details immediately after placing the order
                     order_details_response = fetch_order_details(client, order_id)
-                    
-                    # Update the BaseValue in DynamoDB only if BaseValue is -1, null, or NA
-                    current_base_value = stock.get('BaseValue', {}).get('N', '-1')  # Retrieve BaseValue, default to '-1' if missing
-                    
-                    # ADDITIONAL CHECK: Make sure we are only setting the BaseValue once, and not every time.
-                    if current_base_value == '-1':  # If BaseValue is not set
+
+                    first_day_processed = stock.get('FirstDayProcessed', {}).get('BOOL', False)
+
+                    # Use the FirstDayProcessed flag instead of BaseValue
+                    if not first_day_processed:
                         if order_details_response and 'data' in order_details_response:
                             base_value = order_details_response['data'][0].get('order_price', 0)  # Extract the order price as the BaseValue
                             update_base_value_in_dynamodb(stock['InstrumentName']['S'], base_value)
+                            update_first_day_processed_flag(stock['InstrumentName']['S'])  # Set the FirstDayProcessed flag to True
                             logging.info(f"BaseValue for {stock['InstrumentName']['S']} updated to {base_value}")
                     else:
-                        logging.info(f"BaseValue for {stock['InstrumentName']['S']} is already set to {current_base_value}. Skipping update.")
+                        logging.info(f"First day processed for {stock['InstrumentName']['S']}. Skipping BaseValue update.")
                 else:
                     logging.error(f"Order placement failed for {stock['InstrumentName']['S']}")
-        
-        # Optionally, fetch current positions after placing all orders (currently not used in logic)
+
         fetch_positions(client)

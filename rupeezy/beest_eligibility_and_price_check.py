@@ -1,26 +1,3 @@
-# Here’s a write-up for the script you provided:
-
-#   The script starts by setting up basic logging and loading environment variables, if needed, from a .env file.
-  
-#   It initializes a DynamoDB client to interact with the StockEligibility table in DynamoDB.
-  
-#   The script defines a function fetch_chartink_data that fetches stock data from the Chartink website using a predefined condition. It retrieves data using a session-based request and retries in case of failure.
-  
-#   The fetch_all_stocks_from_dynamodb function scans the StockEligibility table in DynamoDB to fetch all stock records.
-  
-#   The update_stock_eligibility function compares stocks retrieved from DynamoDB with the eligible instruments fetched from Chartink. For each stock, it checks whether it meets the eligibility criteria based on the Chartink data.
-  
-#   If a stock is eligible, its status is updated to "Eligible" in the DynamoDB table; otherwise, it is marked "Ineligible."
-  
-#   The script updates the EligibilityStatus and the LastUpdated timestamp for each stock in DynamoDB and logs the updates.
-      
-#   Finally, the script runs the entire eligibility check and update process and logs the outcome.
-  
-#   This script is designed to automate the process of validating stock eligibility and updating the corresponding records in DynamoDB based on data fetched from Chartink.
-
-# Standard library imports
-
-
 # Standard library imports
 import os  # Library for interacting with the operating system (e.g., environment variables)
 import logging  # Module for logging events and debugging messages
@@ -120,14 +97,38 @@ def update_stock_eligibility():
         # Set the eligibility status based on whether the stock is eligible or not
         eligibility_status = 'Eligible' if is_eligible else 'Ineligible'
 
-        # If stock becomes Ineligible, reset BaseValue to -1
-        base_value = '-1' if not is_eligible else stock.get('BaseValue', {'N': '0'})['N']  # If ineligible, reset BaseValue to -1
+        # FirstDayProcessed flag logic
+        first_day_processed = stock.get('FirstDayProcessed', {'BOOL': False})['BOOL']
+
+        # Handle eligible stocks that haven't been processed for the first day
+        if is_eligible and not first_day_processed:
+            # This is the first day it's eligible, so set the BaseValue
+            base_value = fetch_stock_price(instrument_name)  # Assuming you have a way to fetch stock price
+            first_day_processed = True  # Set it as processed
+        elif not is_eligible:
+            # If the stock becomes ineligible, we remove the BaseValue and reset the FirstDayProcessed flag
+            base_value = None
+            first_day_processed = False
+        else:
+            base_value = stock.get('BaseValue', {'N': '0'})['N']  # Keep the existing base value if it's eligible
 
         # Log the update for the stock
         logging.info(f"Updating {instrument_name} as {eligibility_status} in DynamoDB.")
         
-        # Update the stock's eligibility status, base value, and last updated time in DynamoDB
+        # Update the stock's eligibility status, base value, first day processed, and last updated time in DynamoDB
         try:
+            update_expression = "SET EligibilityStatus = :elig, LastUpdated = :lu, FirstDayProcessed = :fd"
+            expression_attribute_values = {
+                ':elig': {'S': eligibility_status.strip()},  # Set eligibility status and ensure no extra spaces
+                ':lu': {'S': current_time},  # Set the last updated timestamp
+                ':fd': {'BOOL': first_day_processed}  # Update the FirstDayProcessed flag
+            }
+
+            # Conditionally add the BaseValue if it's not None
+            if base_value is not None:
+                update_expression += ", BaseValue = :bv"
+                expression_attribute_values[':bv'] = {'N': str(base_value)}  # Set BaseValue
+
             dynamodb.update_item(
                 TableName='StockEligibility',  # Specify the DynamoDB table to update
                 Key={
@@ -135,17 +136,19 @@ def update_stock_eligibility():
                     'Eligibility': {'S': stock['Eligibility']['S'].strip()}  # Sort key: eligibility, cleaned
                 },
                 # Update expression to set the new eligibility status, base value, and last updated timestamp
-                UpdateExpression="SET EligibilityStatus = :elig, LastUpdated = :lu, BaseValue = :bv",
-                ExpressionAttributeValues={
-                    ':elig': {'S': eligibility_status.strip()},  # Set eligibility status and ensure no extra spaces
-                    ':lu': {'S': current_time},  # Set the last updated timestamp
-                    ':bv': {'N': base_value}  # Set BaseValue, reset to -1 if ineligible
-                }
+                UpdateExpression=update_expression,
+                ExpressionAttributeValues=expression_attribute_values
             )
             logging.info(f"Successfully updated {instrument_name} to {eligibility_status}.")
         except Exception as e:
             # Log any errors that occur during the update
             logging.error(f"Error updating {instrument_name} in DynamoDB: {e}")
+
+# Assuming you have a function to fetch the stock price
+def fetch_stock_price(instrument_name):
+    # Fetch the live stock price from the broker or other source
+    # Return the price as a number (float or int)
+    return 100.0  # Replace with actual logic
 
 # Main execution block: This runs when the script is executed directly
 if __name__ == "__main__":
