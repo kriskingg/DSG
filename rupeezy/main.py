@@ -11,6 +11,7 @@ import os  # A module for interacting with the operating system, like reading en
 import boto3  # The AWS SDK for Python, used to interact with AWS services like DynamoDB
 from vortex_api import AsthaTradeVortexAPI  # Importing custom SDK (from vortex API) to interact with the broker API
 from vortex_api import Constants as Vc  # Importing constants from the vortex API to use in order placement
+from decimal import Decimal
 
 # Setup basic logging. This logs debug-level information in a formatted manner
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
