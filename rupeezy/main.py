@@ -71,7 +71,7 @@ def fetch_order_details(client, order_id):
         response = client.order_history(order_id)  # Fetch the order history based on order_id
         logging.info(f"Order Details for {order_id}: {response}")  # Log the fetched details
         return response  # Return the response for use later (e.g., for updating BaseValue)
-    except Exception as e:  # Log errors if fetching details fails
+    except Exception as e:
         logging.error(f"Error fetching order details for {order_id}: {str(e)}")
         return None
 
@@ -101,7 +101,7 @@ def update_base_value_in_dynamodb(instrument_name, base_value):
             }
         )
         logging.info(f"Updated BaseValue for {instrument_name} to {base_value}.")  # Log the update
-    except Exception as e:  # Log errors if the update fails
+    except Exception as e:
         logging.error(f"Error updating BaseValue for {instrument_name}: {str(e)}")
 
 # Function to update the FirstDayProcessed flag in DynamoDB

@@ -95,19 +95,6 @@ def fetch_order_details(client, order_id):
         logging.error(f"Error fetching order details for {order_id}: {str(e)}")
         return None
 
-# Function to update the FirstDayProcessed flag to True in DynamoDB
-def set_first_day_processed_in_dynamodb(instrument_name):
-    """Update FirstDayProcessed flag to True after the first successful order."""
-    try:
-        table.update_item(
-            Key={'InstrumentName': instrument_name, 'Eligibility': 'Eligible'},
-            UpdateExpression="SET FirstDayProcessed = :val",
-            ExpressionAttributeValues={':val': {'BOOL': True}}
-        )
-        logging.info(f"FirstDayProcessed for {instrument_name} set to True.")
-    except ClientError as e:
-        logging.error(f"Error updating FirstDayProcessed for {instrument_name}: {e}")
-
 # Main function to process stocks for additional quantity logic based on percentage drop
 def process_additional_quantity():
     # Fetch available funds first by calling the broker API
@@ -118,7 +105,7 @@ def process_additional_quantity():
 
     # Open the file to save order IDs (artifact for tracking placed orders)
     with open("order_ids.txt", "w") as order_file:
-        # Scan the DynamoDB table for stocks that are eligible and have AdditionalQuantity > 0
+        # Scan the DynamoDB table for stocks that are eligible, have a valid BaseValue, and FirstDayProcessed is True
         try:
             response = table.scan(
                 FilterExpression="EligibilityStatus = :status AND AdditionalQuantity > :qty",
@@ -135,12 +122,12 @@ def process_additional_quantity():
             instrument_token = int(item.get('Token', 0))  # Fetch the stock's token for API requests
             additional_quantity = int(item.get('AdditionalQuantity', 0))  # Fetch the additional quantity
             first_day_processed = item.get('FirstDayProcessed', {}).get('BOOL', False)  # Check the FirstDayProcessed flag
-
-            # Check if the stock has a valid BaseValue (initial purchase price), and skip if not
             base_value = item.get('BaseValue', None)
-            if base_value is None or Decimal(base_value) <= 0:
-                logging.info(f"{instrument} does not have a valid BaseValue. Skipping.")
-                continue  # Skip this stock if there's no valid BaseValue
+
+            # Ensure stock is eligible, has a valid BaseValue, and FirstDayProcessed is True
+            if not first_day_processed or base_value is None or Decimal(base_value) <= 0:
+                logging.info(f"Skipping {instrument} - Either FirstDayProcessed is False or BaseValue is invalid.")
+                continue
 
             # Convert BaseValue to a Decimal for accurate calculations
             base_value = Decimal(base_value)
@@ -169,10 +156,6 @@ def process_additional_quantity():
                         time.sleep(5)  # Sleep for 5 seconds before fetching order details
                         fetch_order_details(client, order_id)  # Fetch and log order details
 
-                        # Set FirstDayProcessed in DynamoDB after first successful order
-                        if not first_day_processed:
-                            set_first_day_processed_in_dynamodb(instrument)
-
                     available_funds -= total_cost  # Deduct the cost from available funds after placing the order
                 else:
                     # Log a warning if there are not enough funds to place the order
@@ -187,10 +170,6 @@ def process_additional_quantity():
                         order_file.write(f"{order_id}\n")
                         time.sleep(5)  # Sleep for 5 seconds before fetching order details
                         fetch_order_details(client, order_id)  # Fetch and log order details
-
-                        # Set FirstDayProcessed in DynamoDB after first successful order
-                        if not first_day_processed:
-                            set_first_day_processed_in_dynamodb(instrument)
 
                     available_funds -= total_cost  # Deduct the cost from available funds after placing the order
                 else:
