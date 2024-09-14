@@ -124,9 +124,9 @@ def process_additional_quantity():
             first_day_processed = item.get('FirstDayProcessed', {}).get('BOOL', False)  # Check the FirstDayProcessed flag
             base_value = item.get('BaseValue', None)
 
-            # Ensure stock is eligible, has a valid BaseValue, and FirstDayProcessed is True
-            if not first_day_processed or base_value is None or Decimal(base_value) <= 0:
-                logging.info(f"Skipping {instrument} - Either FirstDayProcessed is False or BaseValue is invalid.")
+            # Ensure stock is eligible, has a valid BaseValue, FirstDayProcessed is True, and AdditionalQuantity > 0
+            if not first_day_processed or base_value is None or Decimal(base_value) <= 0 or additional_quantity == 0:
+                logging.info(f"Skipping {instrument} - Either FirstDayProcessed is False, BaseValue is invalid, or AdditionalQuantity is 0.")
                 continue
 
             # Convert BaseValue to a Decimal for accurate calculations

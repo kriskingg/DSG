@@ -1,3 +1,9 @@
+# InstrumentName: The stock's name is fetched and used as the primary key to update the DynamoDB table.
+# EligibilityStatus: The script fetches eligibility status from Chartink data. If the stock meets certain conditions, it is marked as 'Eligible'; otherwise, it is 'Ineligible'.
+# BaseValue: This script does not update the BaseValue unless the stock becomes ineligible, at which point the BaseValue is reset to null.
+# FirstDayProcessed: If a stock becomes eligible for the first time, the FirstDayProcessed flag is set to True. If the stock becomes ineligible, this flag is reset to False.
+# The script ensures that ineligible stocks have their BaseValue reset and FirstDayProcessed updated accordingly. However, it doesn’t set a new BaseValue for eligible stocks.
+
 # Standard library imports
 import os  # Library for interacting with the operating system (e.g., environment variables)
 import logging  # Module for logging events and debugging messages

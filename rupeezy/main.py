@@ -1,3 +1,11 @@
+# InstrumentName: It identifies the stock by InstrumentName and uses this key to update DynamoDB when necessary.
+# EligibilityStatus: This script only processes stocks with EligibilityStatus = Eligible. It fetches eligible stocks from DynamoDB.
+# BaseValue:
+# If BaseValue is less than or equal to 0 (or null), after the first successful order, the script updates the BaseValue to the order price.
+# If BaseValue is already set (greater than 0), it does not update the BaseValue.
+# DefaultQuantity: The script places an order only if the stock has a DefaultQuantity greater than 0. If DefaultQuantity is 0, the order is skipped.
+# FirstDayProcessed: If FirstDayProcessed is False, the script updates it to True after setting the BaseValue for the first time.
+
 import logging  # A Python module for logging messages during program execution
 import os  # A module for interacting with the operating system, like reading environment variables
 import boto3  # The AWS SDK for Python, used to interact with AWS services like DynamoDB
@@ -134,6 +142,9 @@ if __name__ == "__main__":
         with open("order_ids.txt", "w") as order_file:
             for stock in eligible_stocks:
                 default_quantity = int(stock.get('DefaultQuantity', {}).get('N', 0))
+                base_value = Decimal(stock.get('BaseValue', {}).get('N', -1))  # Get BaseValue, default to -1
+                first_day_processed = stock.get('FirstDayProcessed', {}).get('BOOL', False)
+
                 if default_quantity == 0:
                     logging.info(f"Skipping order placement for {stock['InstrumentName']['S']} as DefaultQuantity is 0.")
                     continue
@@ -162,17 +173,15 @@ if __name__ == "__main__":
                     order_file.write(f"{order_id}\n")
                     order_details_response = fetch_order_details(client, order_id)
 
-                    first_day_processed = stock.get('FirstDayProcessed', {}).get('BOOL', False)
-
-                    # Use the FirstDayProcessed flag instead of BaseValue
-                    if not first_day_processed:
+                    # Only update BaseValue if it's less than or equal to 0 or missing (null)
+                    if base_value <= 0:
                         if order_details_response and 'data' in order_details_response:
                             base_value = order_details_response['data'][0].get('order_price', 0)  # Extract the order price as the BaseValue
                             update_base_value_in_dynamodb(stock['InstrumentName']['S'], base_value)
                             update_first_day_processed_flag(stock['InstrumentName']['S'])  # Set the FirstDayProcessed flag to True
                             logging.info(f"BaseValue for {stock['InstrumentName']['S']} updated to {base_value}")
                     else:
-                        logging.info(f"First day processed for {stock['InstrumentName']['S']}. Skipping BaseValue update.")
+                        logging.info(f"BaseValue and FirstDayProcessed are already set for {stock['InstrumentName']['S']}. Skipping BaseValue update.")
                 else:
                     logging.error(f"Order placement failed for {stock['InstrumentName']['S']}")
 
