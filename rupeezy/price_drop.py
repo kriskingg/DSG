@@ -142,7 +142,6 @@ def process_additional_quantity():
                 logging.info(f"Skipping {instrument} - AdditionalQuantity is 0.")
                 continue
 
-
             # Convert BaseValue to a Decimal for accurate calculations
             base_value = Decimal(base_value)
 
@@ -158,39 +157,43 @@ def process_additional_quantity():
             # Calculate the total cost of buying additional stocks based on the current price and quantity
             total_cost = current_price * additional_quantity
 
-            # Check if the available funds are sufficient for the calculated total cost
-            if percentage_drop >= 2:  # If the price has dropped by 2% or more
-                total_cost = current_price * 2 * additional_quantity  # Update the total cost for 2x additional quantity
-                if total_cost <= available_funds:  # If funds are sufficient, place the order
-                    logging.info(f"{instrument} is down by {percentage_drop:.2f}% - Buying twice the AdditionalQuantity ({2 * additional_quantity} units)")
+            # Handle higher percentage drops (3%, 5%, etc.)
+            if percentage_drop >= 3:  # 3% drop or more
+                total_cost = current_price * 3 * additional_quantity  # Update to 3x the AdditionalQuantity
+                if total_cost <= available_funds:  # Check if funds are sufficient
+                    logging.info(f"{instrument} is down by {percentage_drop:.2f}% - Buying 3x AdditionalQuantity ({3 * additional_quantity} units)")
+                    response = trigger_order_via_sdk(client, prepare_order_details(instrument_token, 3 * additional_quantity))
+                    if response:
+                        order_id = response['data']['orderId']
+                        order_file.write(f"{order_id}\n")
+                        time.sleep(5)
+                        fetch_order_details(client, order_id)
+                    available_funds -= total_cost
+
+            elif percentage_drop >= 2:  # 2% drop or more
+                total_cost = current_price * 2 * additional_quantity  # Update to 2x the AdditionalQuantity
+                if total_cost <= available_funds:
+                    logging.info(f"{instrument} is down by {percentage_drop:.2f}% - Buying 2x AdditionalQuantity ({2 * additional_quantity} units)")
                     response = trigger_order_via_sdk(client, prepare_order_details(instrument_token, 2 * additional_quantity))
                     if response:
                         order_id = response['data']['orderId']
                         order_file.write(f"{order_id}\n")
-                        time.sleep(5)  # Sleep for 5 seconds before fetching order details
-                        fetch_order_details(client, order_id)  # Fetch and log order details
+                        time.sleep(5)
+                        fetch_order_details(client, order_id)
+                    available_funds -= total_cost
 
-                    available_funds -= total_cost  # Deduct the cost from available funds after placing the order
-                else:
-                    # Log a warning if there are not enough funds to place the order
-                    logging.warning(f"Not enough funds to buy twice the AdditionalQuantity for {instrument}. Available: {available_funds}, Required: {total_cost}")
-
-            elif percentage_drop >= 1:  # If the price has dropped by 1% or more
-                if total_cost <= available_funds:  # If funds are sufficient, place the order
-                    logging.info(f"{instrument} is down by {percentage_drop:.2f}% - Buying the AdditionalQuantity ({additional_quantity} units)")
+            elif percentage_drop >= 1:  # 1% drop or more
+                if total_cost <= available_funds:
+                    logging.info(f"{instrument} is down by {percentage_drop:.2f}% - Buying AdditionalQuantity ({additional_quantity} units)")
                     response = trigger_order_via_sdk(client, prepare_order_details(instrument_token, additional_quantity))
                     if response:
                         order_id = response['data']['orderId']
                         order_file.write(f"{order_id}\n")
-                        time.sleep(5)  # Sleep for 5 seconds before fetching order details
-                        fetch_order_details(client, order_id)  # Fetch and log order details
+                        time.sleep(5)
+                        fetch_order_details(client, order_id)
+                    available_funds -= total_cost
 
-                    available_funds -= total_cost  # Deduct the cost from available funds after placing the order
-                else:
-                    # Log a warning if there are not enough funds to place the order
-                    logging.warning(f"Not enough funds to buy the AdditionalQuantity for {instrument}. Available: {available_funds}, Required: {total_cost}")
             else:
-                # If the percentage drop is less than 1%, log a message and take no action
                 logging.info(f"{instrument} is down by {percentage_drop:.2f}% - No action taken")
 
 # Function to prepare the order details for placing an order via the broker's API
