@@ -1,10 +1,6 @@
-# Ignore the database file
-orders.db
-
 # Ignore sensitive files
 variables.txt
 access_token.txt
-chartink_script_test.py
 Docs
 
 # Ignore environment files
