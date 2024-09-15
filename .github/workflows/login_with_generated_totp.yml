@@ -18,7 +18,7 @@ name: Login with Generated TOTP and Save Access Token to Secrets
 on:
   workflow_dispatch:  # Allows manual triggering of the workflow from the Actions tab
   schedule:
-    - cron: "51 3 * * 1-5"  # Schedule job to run at 9:21 AM IST (3:51 AM UTC) on weekdays (Monday to Friday)
+    - cron: "42 3 * * 1-5"  # Schedule job to run at 9:12 AM IST (3:42 AM UTC) on weekdays (Monday to Friday)
 
 jobs:
   login_and_save_token:
