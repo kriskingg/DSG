@@ -12,6 +12,7 @@ import boto3  # The AWS SDK for Python, used to interact with AWS services like 
 from vortex_api import AsthaTradeVortexAPI  # Importing custom SDK (from vortex API) to interact with the broker API
 from vortex_api import Constants as Vc  # Importing constants from the vortex API to use in order placement
 from decimal import Decimal
+import time  # Import time to use sleep for retry logic
 
 # Setup basic logging. This logs debug-level information in a formatted manner
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -47,51 +48,74 @@ def fetch_eligible_stocks_from_dynamodb():
         logging.error(f"Error fetching eligible stocks from DynamoDB: {e}")
         return []  # Return an empty list in case of failure
 
-# Function to place an order using the SDK
+# Function to place an order using the SDK with retry logic
 def trigger_order_via_sdk(client, order_details):
     """Trigger an order using the SDK and log the response."""
-    try:
-        # Choose the correct order type (market or limit) based on the variety specified in 'order_details'
-        variety = Vc.VarietyTypes.REGULAR_MARKET_ORDER if order_details['variety'] == "RL-MKT" else Vc.VarietyTypes.REGULAR_LIMIT_ORDER
-        
-        # Place the order using the broker's API, providing all necessary parameters
-        response = client.place_order(
-            exchange=Vc.ExchangeTypes.NSE_EQUITY,  # The exchange (NSE Equity in this case)
-            token=order_details['token'],  # Stock token (unique identifier for the stock)
-            transaction_type=Vc.TransactionSides.BUY if order_details['transaction_type'] == "BUY" else Vc.TransactionSides.SELL,  # Buy or Sell
-            product=Vc.ProductTypes.DELIVERY,  # Product type (e.g., delivery)
-            variety=variety,  # Order variety (market or limit)
-            quantity=order_details['quantity'],  # Quantity of stocks to buy
-            price=order_details['price'],  # Order price (if a limit order)
-            trigger_price=order_details['trigger_price'],  # Trigger price (if applicable)
-            disclosed_quantity=order_details['disclosed_quantity'],  # Disclosed quantity
-            validity=Vc.ValidityTypes.FULL_DAY if order_details['validity'] == "DAY" else Vc.ValidityTypes.IMMEDIATE_OR_CANCEL  # Order validity
-        )
-        logging.info(f"Order placed. Full response: {response}")  # Log the full response from the API
-        return response  # Return the response for further processing
-    except Exception as e:  # Log errors if the order fails
-        logging.error(f"Error during order placement: {str(e)}")
-        return None
+    retries = 3  # Number of retry attempts
+    delay = 5  # Delay in seconds between retries
 
-# Function to fetch the order details after placing an order
+    for attempt in range(retries):
+        try:
+            # Choose the correct order type (market or limit) based on the variety specified in 'order_details'
+            variety = Vc.VarietyTypes.REGULAR_MARKET_ORDER if order_details['variety'] == "RL-MKT" else Vc.VarietyTypes.REGULAR_LIMIT_ORDER
+
+            # Place the order using the broker's API, providing all necessary parameters
+            response = client.place_order(
+                exchange=Vc.ExchangeTypes.NSE_EQUITY,  # The exchange (NSE Equity in this case)
+                token=order_details['token'],  # Stock token (unique identifier for the stock)
+                transaction_type=Vc.TransactionSides.BUY if order_details['transaction_type'] == "BUY" else Vc.TransactionSides.SELL,  # Buy or Sell
+                product=Vc.ProductTypes.DELIVERY,  # Product type (e.g., delivery)
+                variety=variety,  # Order variety (market or limit)
+                quantity=order_details['quantity'],  # Quantity of stocks to buy
+                price=order_details['price'],  # Order price (if a limit order)
+                trigger_price=order_details['trigger_price'],  # Trigger price (if applicable)
+                disclosed_quantity=order_details['disclosed_quantity'],  # Disclosed quantity
+                validity=Vc.ValidityTypes.FULL_DAY if order_details['validity'] == "DAY" else Vc.ValidityTypes.IMMEDIATE_OR_CANCEL  # Order validity
+            )
+            logging.info(f"Order placed. Full response: {response}")  # Log the full response from the API
+            return response  # Return the response for further processing
+        except Exception as e:  # Log errors if the order fails
+            logging.error(f"Error during order placement: {str(e)}. Attempt {attempt + 1} of {retries}")
+            if attempt < retries - 1:  # If it's not the last attempt, wait before retrying
+                time.sleep(delay)
+            else:
+                return None  # Return None if all retries fail
+
+# Function to fetch the order details with retry logic
 def fetch_order_details(client, order_id):
     """Fetch order details for a given order ID."""
-    try:
-        response = client.order_history(order_id)  # Fetch the order history based on order_id
-        logging.info(f"Order Details for {order_id}: {response}")  # Log the fetched details
-        return response  # Return the response for use later (e.g., for updating BaseValue)
-    except Exception as e:
-        logging.error(f"Error fetching order details for {order_id}: {str(e)}")
-        return None
+    retries = 3  # Number of retry attempts
+    delay = 5  # Delay in seconds between retries
 
-# Function to fetch current positions (currently being fetched but not used)
+    for attempt in range(retries):
+        try:
+            response = client.order_history(order_id)  # Fetch the order history based on order_id
+            logging.info(f"Order Details for {order_id}: {response}")  # Log the fetched details
+            return response  # Return the response for use later (e.g., for updating BaseValue)
+        except Exception as e:
+            logging.error(f"Error fetching order details for {order_id}: {str(e)}. Attempt {attempt + 1} of {retries}")
+            if attempt < retries - 1:  # If it's not the last attempt, wait before retrying
+                time.sleep(delay)
+            else:
+                return None  # Return None if all retries fail
+
+# Function to fetch current positions with retry logic
 def fetch_positions(client):
-    """Fetch current positions."""
-    try:
-        response = client.positions()  # Fetch the current positions from the API
-        logging.info(f"Current Positions: {response}")  # Log the current positions
-    except Exception as e:  # Log errors if fetching positions fails
-        logging.error(f"Error fetching positions: {str(e)}")
+    """Fetch current positions with retry logic."""
+    retries = 3  # Number of retry attempts
+    delay = 5  # Delay in seconds between retries
+
+    for attempt in range(retries):
+        try:
+            response = client.positions()  # Fetch the current positions from the API
+            logging.info(f"Current Positions: {response}")  # Log the current positions
+            return response
+        except Exception as e:  # Log errors if fetching positions fails
+            logging.error(f"Error fetching positions: {str(e)}. Attempt {attempt + 1} of {retries}")
+            if attempt < retries - 1:  # If it's not the last attempt, wait before retrying
+                time.sleep(delay)
+            else:
+                return None  # Return None if all retries fail
 
 # Function to update the BaseValue for a stock in DynamoDB
 def update_base_value_in_dynamodb(instrument_name, base_value):
