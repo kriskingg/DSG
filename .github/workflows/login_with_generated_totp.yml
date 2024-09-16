@@ -66,10 +66,13 @@ jobs:
         env:
           RUPEEZY_ACCESS_TOKEN: ${{ env.TOKEN }}  # Use the token directly
 
-      # - name: Run Stock Eligibility and Price Check
-      #   env:
-      #     AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      #     AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      #   run: |
-      #     pip install boto3 pytz bs4 python-dotenv
-      #     python rupeezy/beest_eligibility_and_price_check.py
+      - name: Send Telegram Notification
+        if: always()  # Ensure the notification is sent regardless of success/failure
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          message="Workflow has completed. Status: ${{ job.status }}"
+          curl -s -X POST https://api.telegram.org/bot${{ env.TELEGRAM_TOKEN }}/sendMessage \
+            -d chat_id=${{ env.TELEGRAM_CHAT_ID }} \
+            -d text="$message"
