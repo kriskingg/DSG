@@ -3,7 +3,7 @@ name: Price Drop Strategy Workflow
 on:
   workflow_dispatch:  # Allows manual triggering
   schedule:
-    # Schedule job to run at 9:39 AM IST (4:09 AM UTC) and 2:19 PM IST (8:49 AM UTC) on weekdays
+    # Schedule job to run at 9:57 AM IST (4:27 AM UTC) and 2:19 PM IST (8:49 AM UTC) on weekdays
     - cron: "27 4 * * 1-5"  # 9:57 AM IST (4:27 AM UTC) from Monday to Friday
     - cron: "49 8 * * 1-5"  # 2:19 PM IST (8:49 AM UTC) from Monday to Friday
 
@@ -35,11 +35,6 @@ jobs:
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws configure set region ap-south-1
 
-      # # Step 1: Run the eligibility check script before placing orders
-      # - name: Run Stock Eligibility and Price Check Script
-      #   run: |
-      #     python rupeezy/beest_eligibility_and_price_check.py
-
       # Step 2: Run the price drop strategy script
       - name: Run Price Drop Strategy Script
         run: |
@@ -58,3 +53,15 @@ jobs:
         with:
           name: order_ids
           path: order_ids.txt
+
+      # Step 4: Send Telegram Notification
+      - name: Send Telegram Notification
+        if: always()  # Ensure the notification is sent regardless of success/failure
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          message="additional_quantity_logic workflow has completed. Status: ${{ job.status }}"
+          curl -s -X POST https://api.telegram.org/bot${{ env.TELEGRAM_TOKEN }}/sendMessage \
+            -d chat_id=${{ env.TELEGRAM_CHAT_ID }} \
+            -d text="$message"
