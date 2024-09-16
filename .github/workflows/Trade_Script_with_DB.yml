@@ -24,6 +24,7 @@ on:
   workflow_dispatch:  # Allows manual triggering
   schedule:
     - cron: "0 4 * * 1-5"  # Schedule job to run at 9:30 AM IST (4:00 AM UTC) on weekdays (Monday to Friday)
+
 jobs:
   run-scripts:
     runs-on: ubuntu-latest  # GitHub-hosted runner for Linux
@@ -75,3 +76,14 @@ jobs:
           name: order_ids
           path: order_ids.txt
 
+      # Step 4: Notification to telegram bot   
+      - name: Send Telegram Notification
+        if: always()  # Ensure the notification is sent regardless of success/failure
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          message="Trade_Script_with_DB workflow has completed. Status: ${{ job.status }}"
+          curl -s -X POST https://api.telegram.org/bot${{ env.TELEGRAM_TOKEN }}/sendMessage \
+            -d chat_id=${{ env.TELEGRAM_CHAT_ID }} \
+            -d text="$message"
