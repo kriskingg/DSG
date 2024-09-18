@@ -1,0 +1,181 @@
+Here’s the updated migration plan, incorporating your requirement to complete most steps via Jenkins and Terraform prior to the change order date, with only final steps involving Route53 and health checks to be handled on the change day:
+
+
+---
+
+Vault Cluster Migration Plan: ALB to NLB (Automated with Jenkins & Terraform)
+
+This document outlines the steps for migrating from Application Load Balancer (ALB) to Network Load Balancer (NLB) for Vault clusters, focusing on automating the process with Jenkins and Terraform. The goal is to complete most of the migration steps before the change order date, leaving only the final steps (Route53 and health checks) to be completed on the change day.
+
+
+---
+
+Pre-Migration Steps (Before Change Day)
+
+Automate the following steps via Jenkins and Terraform:
+
+Cluster B (Disaster Recovery) Migration Plan
+
+1. Deploy NLB for DR Cluster:
+
+Use Terraform to set up the Network Load Balancer for the DR cluster.
+
+
+
+2. Create NLB Target Group for DR Cluster:
+
+Establish the Target Group for the DR cluster's NLB using Terraform.
+
+Ensure traffic routing to the Vault nodes is correctly configured.
+
+
+
+3. Set Up Health Checks for DR NLB (Preliminary):
+
+Configure health checks for the DR cluster’s NLB. These health checks should monitor node status but will not be attached to Route53 until change day.
+
+
+
+4. Setup CloudWatch Alarms:
+
+Create CloudWatch alarms to notify of any significant changes related to health checks or traffic routing. Automate this process using Terraform.
+
+
+
+5. Setup SNS Topic and Subscription:
+
+Use Terraform to configure an SNS topic and subscription to alert relevant teams during the migration process and after completion.
+
+
+
+6. Attach NLB Target Group to Auto Scaling Group (ASG):
+
+Connect the NLB Target Group to the Auto Scaling Group for automated load balancing using Terraform.
+
+
+
+7. Launch New Instances for DR Cluster:
+
+Use Terraform to launch new instances for the DR cluster, ensuring proper connectivity with the NLB.
+
+
+
+8. Test NLB in DR Cluster:
+
+Conduct preliminary tests via Terraform to verify that the NLB in the DR cluster is functioning correctly, including traffic routing and node connectivity.
+
+
+
+9. Failover to DR Cluster (Pre-Migration Test):
+
+Perform a simulated failover to the DR cluster using Terraform to ensure failover mechanisms work as expected, with TLS termination tested at the node level.
+
+
+
+
+
+---
+
+Cluster A (Primary Cluster) Migration Plan
+
+1. Deploy NLB for Primary Cluster:
+
+Use Terraform to set up the Network Load Balancer for the primary cluster (Cluster A).
+
+
+
+2. Create NLB Target Group for Primary Cluster:
+
+Establish the Target Group for the primary cluster's NLB using Terraform.
+
+Ensure traffic can flow directly to the Vault nodes.
+
+
+
+3. Set Up Health Checks for Primary NLB (Preliminary):
+
+Configure health checks for the primary cluster's NLB using Terraform, but these will not be attached to Route53 until the change day.
+
+
+
+4. Setup CloudWatch Alarms:
+
+Automate the creation of CloudWatch alarms using Terraform to monitor health check status and NLB traffic routing.
+
+
+
+5. Setup SNS Topic and Subscription:
+
+Set up SNS topic and subscriptions using Terraform to ensure any issues during migration or post-migration are notified to the relevant teams.
+
+
+
+6. Attach NLB Target Group to Auto Scaling Group (ASG):
+
+Use Terraform to connect the NLB Target Group to the ASG for automated load balancing.
+
+
+
+7. Launch New Instances for Primary Cluster:
+
+Use Terraform to launch new instances for the primary cluster, ensuring NLB handles traffic appropriately.
+
+
+
+8. Test NLB in Primary Cluster (Preliminary):
+
+Conduct preliminary tests via Terraform to verify that the NLB in the primary cluster is functioning correctly and handling traffic with TLS encryption at the node level.
+
+
+
+
+
+---
+
+Final Migration Steps (Change Day)
+
+On the day of the change order, complete the following steps manually or through a final Jenkins job:
+
+1. Route53 Update:
+
+Update Route53 DNS records to point traffic to the NLBs for both the Primary and DR clusters.
+
+Ensure that Route53 failover records are correctly configured, pointing to the NLB Target Groups of the Primary and DR clusters.
+
+
+
+2. Finalize Health Checks:
+
+Attach the health checks to Route53 records to monitor the status of the NLBs and failover between clusters.
+
+Ensure Route53 switches traffic based on health check results during failover or failback.
+
+
+
+3. Final Failover/Failback Testing:
+
+Perform failover from the Primary Cluster (Cluster A) to the DR Cluster (Cluster B) using the updated Route53 records and NLB setup.
+
+Test failback from Cluster B to Cluster A after confirming failover works correctly.
+
+
+
+4. Monitor CloudWatch and SNS:
+
+Monitor CloudWatch alarms and SNS notifications during and after the final migration to ensure everything is functioning correctly.
+
+
+
+
+
+---
+
+Conclusion
+
+By automating most of the steps via Jenkins and Terraform before the change day, we minimize manual intervention and risk. Only critical DNS and health check updates need to be done during the final change window. This ensures a smooth transition with minimal disruption to operations and guarantees end-to-end encryption by enabling TLS at the node level.
+
+
+---
+
+This version aligns with your goal to complete as much as possible through automation and reserve only the final, critical steps for the change day. Let me know if any further tweaks are required!
+
