@@ -196,6 +196,10 @@ if __name__ == "__main__":
                     order_id = response['data']['orderId']  # Extract the order ID from the response
                     logging.info(f"Order placed successfully for {stock['InstrumentName']['S']}: {response}")
                     order_file.write(f"{order_id}\n")
+                    
+                    # Add a sleep to wait before fetching order details
+                    time.sleep(10)  # Wait 10 seconds before fetching order details
+                    
                     order_details_response = fetch_order_details(client, order_id)
 
                     # Only update BaseValue if it's less than or equal to 0 or missing (null)
@@ -209,5 +213,5 @@ if __name__ == "__main__":
                         logging.info(f"BaseValue and FirstDayProcessed are already set for {stock['InstrumentName']['S']}. Skipping BaseValue update.")
                 else:
                     logging.error(f"Order placement failed for {stock['InstrumentName']['S']}")
-
+        
         fetch_positions(client)
