@@ -90,12 +90,14 @@ def fetch_order_details_with_retry(client, order_id):
 # Function to update BaseValue in DynamoDB
 def update_base_value_in_dynamodb(instrument_name, base_value):
     try:
+        # Round the base_value to two decimal places before updating
+        rounded_base_value = Decimal(base_value).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         table.update_item(
             Key={'InstrumentName': instrument_name},
             UpdateExpression="SET BaseValue = :bv",
-            ExpressionAttributeValues={':bv': Decimal(base_value)}
+            ExpressionAttributeValues={':bv': rounded_base_value}
         )
-        logging.info(f"Updated BaseValue for {instrument_name} to {base_value}.")
+        logging.info(f"Updated BaseValue for {instrument_name} to {rounded_base_value}.")
     except Exception as e:
         logging.error(f"Error updating BaseValue for {instrument_name}: {str(e)}")
 
