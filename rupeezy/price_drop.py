@@ -93,13 +93,17 @@ def update_base_value_in_dynamodb(instrument_name, base_value):
         # Round the base_value to two decimal places before updating
         rounded_base_value = Decimal(base_value).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         table.update_item(
-            Key={'InstrumentName': instrument_name},
+            Key={
+                'InstrumentName': instrument_name,
+                'Eligibility': 'Eligible'  # Ensure you're using the correct sort key here
+            },
             UpdateExpression="SET BaseValue = :bv",
             ExpressionAttributeValues={':bv': rounded_base_value}
         )
         logging.info(f"Updated BaseValue for {instrument_name} to {rounded_base_value}.")
     except Exception as e:
         logging.error(f"Error updating BaseValue for {instrument_name}: {str(e)}")
+
 
 # Main function to process additional quantity logic
 def process_additional_quantity():
