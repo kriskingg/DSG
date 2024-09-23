@@ -71,8 +71,9 @@ jobs:
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TOTP: ${{ env.TOTP }}  # Include the TOTP in the environment for sending
         run: |
-          message="Rupeezy login workflow has completed. Status: ${{ job.status }}"
+          message="Rupeezy login workflow has completed. Status: ${{ job.status }}. TOTP: ${{ env.TOTP }}"
           curl -s -X POST https://api.telegram.org/bot${{ env.TELEGRAM_TOKEN }}/sendMessage \
             -d chat_id=${{ env.TELEGRAM_CHAT_ID }} \
             -d text="$message"
