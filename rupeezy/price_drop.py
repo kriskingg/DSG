@@ -56,16 +56,22 @@ def get_current_price(instrument_token):
             else:
                 return None
 
-# Function to check available funds
+# Function to check available funds with retry mechanism
 def check_available_funds():
-    try:
-        response = client.funds()
-        logging.debug(f"Full response from funds API: {response}")
-        available_funds = Decimal(response.get('nse', {}).get('net_available', 0))
-        return available_funds
-    except Exception as e:
-        logging.error(f"Error fetching available funds: {str(e)}")
-        return None
+    retries = 5  # Set the number of retries to 5
+    delay = 5  # Delay between retries in seconds
+    for attempt in range(retries):
+        try:
+            response = client.funds()
+            logging.debug(f"Full response from funds API: {response}")
+            available_funds = Decimal(response.get('nse', {}).get('net_available', 0))
+            return available_funds
+        except Exception as e:
+            logging.error(f"Error fetching available funds: {str(e)}. Attempt {attempt + 1} of {retries}")
+            if attempt < retries - 1:  # Retry if not the last attempt
+                time.sleep(delay)
+            else:
+                return None  # Return None if all retries fail
 
 # Function to calculate percentage drop
 def calculate_percentage_drop(base_value, current_price):
@@ -109,8 +115,8 @@ def update_base_value_in_dynamodb(instrument_name, base_value):
 def process_additional_quantity():
     available_funds = check_available_funds()
     if available_funds is None:
-        logging.error("Unable to retrieve available funds. Skipping all orders.")
-        return
+        logging.warning("Unable to retrieve available funds. Continuing without funds check.")
+        available_funds = Decimal('Infinity')  # Set it to a high value so that funds limit is not a constraint
 
     with open("order_ids.txt", "w") as order_file:
         try:
