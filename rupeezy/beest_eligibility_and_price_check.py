@@ -114,7 +114,14 @@ def update_stock_eligibility():
             base_value = None
             first_day_processed = False
         else:
-            base_value = stock.get('BaseValue', {'N': '0'})['N']  # Keep the existing base value if it's eligible
+            # Check if BaseValue is not null and has the 'N' key; if not, skip this stock
+            base_value_attr = stock.get('BaseValue', {})
+            if 'N' in base_value_attr:
+                base_value = base_value_attr['N']  # Access BaseValue if it's valid
+            else:
+                logging.info(f"Skipping {instrument_name} as BaseValue is null or missing 'N' key.")
+                continue  # Skip to the next stock if BaseValue is null or invalid
+
 
         # Log the update for the stock
         logging.info(f"Updating {instrument_name} as {eligibility_status} in DynamoDB.")
