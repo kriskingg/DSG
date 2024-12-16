@@ -64,7 +64,7 @@ def trigger_order_via_sdk(client, order_details):
                 exchange=Vc.ExchangeTypes.NSE_EQUITY,  # The exchange (NSE Equity in this case)
                 token=order_details['token'],  # Stock token (unique identifier for the stock)
                 transaction_type=Vc.TransactionSides.BUY if order_details['transaction_type'] == "BUY" else Vc.TransactionSides.SELL,  # Buy or Sell
-                product=Vc.ProductTypes.DELIVERY,  # Product type (e.g., delivery)
+                product=Vc.ProductTypes.MTF,  # Product type (e.g., MTF)
                 variety=variety,  # Order variety (market or limit)
                 quantity=order_details['quantity'],  # Quantity of stocks to buy
                 price=order_details['price'],  # Order price (if a limit order)
@@ -179,7 +179,7 @@ if __name__ == "__main__":
                     "token": int(stock['Token']['N']),
                     "symbol": stock['InstrumentName']['S'],
                     "transaction_type": "BUY",
-                    "product": "DELIVERY",
+                    "product": "MTF",
                     "variety": "RL-MKT",
                     "quantity": default_quantity,
                     "price": 0.0,
