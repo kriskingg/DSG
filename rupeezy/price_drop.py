@@ -211,7 +211,7 @@ def prepare_order_details(instrument_token, quantity):
         "exchange": Vc.ExchangeTypes.NSE_EQUITY,
         "token": instrument_token,
         "transaction_type": Vc.TransactionSides.BUY,
-        "product": Vc.ProductTypes.DELIVERY,
+        "product": Vc.ProductTypes.MTF,
         "variety": Vc.VarietyTypes.REGULAR_MARKET_ORDER,
         "quantity": quantity,
         "price": 0.0,
