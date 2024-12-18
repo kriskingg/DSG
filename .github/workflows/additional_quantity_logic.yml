@@ -1,67 +1,67 @@
-name: Price Drop Strategy Workflow
+# name: Price Drop Strategy Workflow
 
-on:
-  workflow_dispatch:  # Allows manual triggering
-  schedule:
-    # Schedule job to run at 9:57 AM IST (4:27 AM UTC) and 2:19 PM IST (8:49 AM UTC) on weekdays
-    - cron: "27 4 * * 1-5"  # 9:57 AM IST (4:27 AM UTC) from Monday to Friday
-    - cron: "49 8 * * 1-5"  # 2:19 PM IST (8:49 AM UTC) from Monday to Friday
+# on:
+#   workflow_dispatch:  # Allows manual triggering
+#   schedule:
+#     # Schedule job to run at 9:57 AM IST (4:27 AM UTC) and 2:19 PM IST (8:49 AM UTC) on weekdays
+#     - cron: "27 4 * * 1-5"  # 9:57 AM IST (4:27 AM UTC) from Monday to Friday
+#     - cron: "49 8 * * 1-5"  # 2:19 PM IST (8:49 AM UTC) from Monday to Friday
 
-jobs:
-  run-price-drop:
-    runs-on: ubuntu-latest  # GitHub-hosted runner for Linux
+# jobs:
+#   run-price-drop:
+#     runs-on: ubuntu-latest  # GitHub-hosted runner for Linux
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.8'
+#       - name: Set up Python
+#         uses: actions/setup-python@v4
+#         with:
+#           python-version: '3.8'
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+#       - name: Install dependencies
+#         run: |
+#           python -m pip install --upgrade pip
+#           pip install -r requirements.txt
 
-      # Use the access token directly from GitHub Secrets
-      - name: Set Access Token from GitHub Secrets
-        run: echo "RUPEEZY_ACCESS_TOKEN=${{ secrets.RUPEEZY_ACCESS_TOKEN }}" >> $GITHUB_ENV
+#       # Use the access token directly from GitHub Secrets
+#       - name: Set Access Token from GitHub Secrets
+#         run: echo "RUPEEZY_ACCESS_TOKEN=${{ secrets.RUPEEZY_ACCESS_TOKEN }}" >> $GITHUB_ENV
 
-      - name: Configure AWS Credentials
-        run: |
-          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws configure set region ap-south-1
+#       - name: Configure AWS Credentials
+#         run: |
+#           aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+#           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#           aws configure set region ap-south-1
 
-      # Step 2: Run the price drop strategy script
-      - name: Run Price Drop Strategy Script
-        run: |
-          python rupeezy/price_drop.py
-        env:
-          RUPEEZY_API_KEY: ${{ secrets.RUPEEZY_API_KEY }}
-          RUPEEZY_ACCESS_TOKEN: ${{ secrets.RUPEEZY_ACCESS_TOKEN }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ap-south-1
-          RUPEEZY_APPLICATION_ID: dev_3sK5DZDR
+#       # Step 2: Run the price drop strategy script
+#       - name: Run Price Drop Strategy Script
+#         run: |
+#           python rupeezy/price_drop.py
+#         env:
+#           RUPEEZY_API_KEY: ${{ secrets.RUPEEZY_API_KEY }}
+#           RUPEEZY_ACCESS_TOKEN: ${{ secrets.RUPEEZY_ACCESS_TOKEN }}
+#           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#           AWS_DEFAULT_REGION: ap-south-1
+#           RUPEEZY_APPLICATION_ID: dev_3sK5DZDR
 
-      # Step 3: Upload the order_ids.txt file as an artifact (enabled now)
-      - name: Upload order_ids.txt as an artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: order_ids
-          path: order_ids.txt
+#       # Step 3: Upload the order_ids.txt file as an artifact (enabled now)
+#       - name: Upload order_ids.txt as an artifact
+#         uses: actions/upload-artifact@v3
+#         with:
+#           name: order_ids
+#           path: order_ids.txt
 
-      # Step 4: Send Telegram Notification
-      - name: Send Telegram Notification
-        if: always()  # Ensure the notification is sent regardless of success/failure
-        env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          message="Beest additional quantity workflow has completed. Status: ${{ job.status }}"
-          curl -s -X POST https://api.telegram.org/bot${{ env.TELEGRAM_TOKEN }}/sendMessage \
-            -d chat_id=${{ env.TELEGRAM_CHAT_ID }} \
-            -d text="$message"
+#       # Step 4: Send Telegram Notification
+#       - name: Send Telegram Notification
+#         if: always()  # Ensure the notification is sent regardless of success/failure
+#         env:
+#           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+#           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+#         run: |
+#           message="Beest additional quantity workflow has completed. Status: ${{ job.status }}"
+#           curl -s -X POST https://api.telegram.org/bot${{ env.TELEGRAM_TOKEN }}/sendMessage \
+#             -d chat_id=${{ env.TELEGRAM_CHAT_ID }} \
+#             -d text="$message"
