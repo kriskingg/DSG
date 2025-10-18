@@ -1,6 +1,11 @@
 # Beest 🐂
-An automated stock trading bot that implements a sophisticated price drop buying strategy for Indian equity markets. Beest monitors eligible stocks and automatically purchases additional quantities when prices drop by specific percentage thresholds.
+
+An automated stock trading bot that implements a sophisticated price drop buying strategy for Indian equity markets. Beest monitors eligible stocks and ETFs, automatically purchasing additional quantities when prices drop by specific percentage thresholds.
+
+**Current Focus:** Defence, Gold, and Silver sector ETFs for strategic portfolio diversification.
+
 ## 📋 Table of Contents
+
 - [Overview](#overview)
 - [Architecture](#architecture)
 - [Key Features](#key-features)
@@ -13,14 +18,21 @@ An automated stock trading bot that implements a sophisticated price drop buying
 - [Examples](#examples)
 - [Future Enhancements](#future-enhancements)
 - [Disclaimer](#disclaimer)
+
 ## 🎯 Overview
-Beest is a Python-based automated trading system designed to capitalize on market dips by implementing a systematic approach to buying additional quantities of stocks as their prices decline. The system uses DynamoDB for data persistence and integrates with stock market APIs for real-time price monitoring.
+
+Beest is a Python-based automated trading system designed to capitalize on market dips by implementing a systematic approach to buying additional quantities of stocks and ETFs as their prices decline. The system uses DynamoDB for data persistence and integrates with stock market APIs for real-time price monitoring.
+
 ### Key Benefits
+
 - **Dollar Cost Averaging**: Automatically buys more shares at lower prices
 - **Risk Management**: Structured approach to prevent emotional trading
 - **Gap Down Handling**: Smart logic for market gap-down scenarios
 - **Real-time Monitoring**: Continuous price monitoring and execution
+- **Sector ETF Focus**: Strategic focus on Defence, Gold, and Silver ETFs for diversification
+
 ## 🏗️ Architecture
+
 ```
 Beest/
 ├── rupeezy/                     # Main application package
@@ -34,205 +46,320 @@ Beest/
 │   └── login_with_generated_totp.yml   # Authentication testing
 ├── PriceDrop_Buy_Logic.txt     # Strategy documentation
 ├── requirements.txt            # Python dependencies
-├── rupeezy_instruments_list.txt # Supported instruments
+├── rupeezy_instruments_list.txt # Supported instruments (Defence, Gold, Silver ETFs)
 ├── beest_flow                  # Workflow documentation
 └── README.md                   # This file
 ```
+
 ## ✨ Key Features
-- **Automated Price Monitoring**: Real-time tracking of eligible stocks
-- **Percentage-Based Buying**: Purchases additional quantities based on price drop percentages
-- **Gap Down Detection**: Handles market gap-down scenarios intelligently
-- **DynamoDB Integration**: Persistent storage for stock data and trading history
-- **Eligibility Management**: Dynamic eligibility checking for stocks
-- **Redundancy Prevention**: Avoids duplicate purchases at same price levels
+
+### 1. Intelligent Price Drop Detection
+- Monitors price drops across configurable thresholds (3%, 5%, 6%+)
+- Calculates quantity to purchase based on drop severity
+- Prevents redundant purchases at same price levels
+
+### 2. Gap Down Strategy
+- Special handling for market gap-downs
+- Immediate execution when gap exceeds threshold
+- Capitalizes on panic selling opportunities
+
+### 3. ETF-Focused Portfolio
+- **Defence Sector ETFs**: Capitalize on India's defence modernization
+- **Gold ETFs**: Hedge against market volatility and inflation
+- **Silver ETFs**: Industrial demand and precious metal exposure
+- Easy to configure via `rupeezy_instruments_list.txt`
+
+### 4. Enhanced Notification System
+- **Price Drop Alerts**: Instant notifications when drop thresholds are met
+- **Purchase Confirmations**: Detailed transaction records with timestamps
+- **Eligibility Updates**: Track which instruments are ready for monitoring
+- **Error Notifications**: Immediate alerts for authentication or execution issues
+
+### 5. Automated Workflow Management
+- **Scheduled Runs**: Automatic execution during market hours (Mon-Fri 9:15 AM IST)
+- **Manual Triggers**: On-demand workflow runs via GitHub Actions UI
+- **Authentication Flow**: Secure TOTP-based login with credential management
+- **Database Integration**: Persistent storage using AWS DynamoDB
+
 ## 📦 Modules
-### 🚀 main.py
-The main entry point of the application that orchestrates the entire trading workflow:
-- Initializes the trading environment
-- Coordinates between different modules
-- Manages the main execution loop
-### 🔐 login.py
-Handles authentication with the trading platform:
-- Manages session tokens
-- Implements TOTP-based two-factor authentication
-- Handles login failures and retries
-- Secures API credentials
-### 📉 price_drop.py
-Core module implementing the price drop buying strategy:
-- Monitors real-time price changes
-- Calculates percentage drops from initial purchase price
-- Executes buy orders based on predefined thresholds
-- Implements gap-down detection logic
-- Updates DynamoDB with transaction records
-- Prevents duplicate purchases at same price levels
-### ✅ beest_eligibility_and_price_check.py
-Manages stock eligibility and price verification:
-- Validates if stocks meet eligibility criteria
-- Fetches current market prices
-- Cross-references with eligible stock list
-- Updates stock status in database
-## 📊 Trading Strategy
+
+### rupeezy/main.py
+- Main orchestration logic
+- Coordinates login, eligibility checks, and price monitoring
+- Handles workflow execution flow
+
+### rupeezy/login.py
+- Authentication with broker platform
+- TOTP generation and validation
+- Session management
+
+### rupeezy/price_drop.py
+- Core price drop calculation logic
+- Determines purchase quantities based on drop percentage
+- Implements redundancy prevention
+
+### rupeezy/beest_eligibility_and_price_check.py
+- Validates instruments eligibility
+- Real-time price monitoring
+- Triggers purchases when conditions are met
+
+## 📈 Trading Strategy
+
 ### Price Drop Thresholds
-The bot purchases additional quantities based on these percentage drops:
-| Drop % | Action |
-|--------|--------|
-| 1% | Buy 1 additional quantity |
-| 2% | Buy 1 additional quantity |
-| 3% | Buy 2 additional quantities |
-| 4% | Buy 2 additional quantities |
-| 5% | Buy 3 additional quantities |
-| 6%+ | Buy 4 additional quantities |
-### Gap Down Logic
-Special handling for stocks that open significantly lower:
-1. Detects gap-down at market open
-2. Calculates drop percentage from previous close
-3. Executes appropriate buy quantity based on gap percentage
-4. Updates tracking to prevent redundant purchases
-### Redundancy Prevention
-- Tracks all executed purchases in DynamoDB
-- Maintains price level history
-- Prevents multiple purchases at same drop threshold
-- Ensures systematic execution without duplication
+
+| Drop Percentage | Additional Quantity | Strategy Rationale |
+|----------------|-------------------|-------------------|
+| 3-4.9% | 2 shares | Moderate dip - conservative entry |
+| 5-5.9% | 3 shares | Significant dip - increased position |
+| 6%+ | 4 shares | Major dip - aggressive accumulation |
+
+### Key Strategy Rules
+
+1. **First Purchase Requirement**: Must own at least 1 share before bot activates
+2. **Redundancy Prevention**: No duplicate purchases at same price level
+3. **Gap Down Logic**: Immediate purchase at market open if gap exceeds threshold
+4. **Intraday Monitoring**: Continuous price checks during trading hours
+
 ## 🤖 Automated Workflows
-Beest includes several GitHub Actions workflows for automation and testing:
-### 📈 Trade_Script_with_DB.yml
-**Purpose**: Main production trading automation workflow
-**Trigger**: Scheduled (Monday-Friday at 3:45 AM UTC / 9:15 AM IST)
-**Key Functions**:
-- Runs the complete trading bot during market hours
-- Authenticates with TOTP-based two-factor authentication
-- Monitors eligible stocks and executes price drop strategy
-- Updates DynamoDB with transaction data
-- Handles errors and provides execution logs
-**Environment**: Uses AWS credentials and trading API secrets from GitHub Secrets
-**Note**: Currently commented out for safety - uncomment when ready for production
-### 🧪 additional_quantity_logic.yml
-**Purpose**: Testing workflow for additional quantity buying logic
-**Trigger**: Manual workflow dispatch
-**Key Functions**:
-- Tests the price drop threshold calculations
-- Validates quantity determination logic
-- Ensures gap-down scenarios are handled correctly
-- Verifies redundancy prevention mechanisms
-**Use Case**: Development and testing of core buying logic before production deployment
-**Note**: Currently commented out - enable when testing logic changes
-### 🔑 login_with_generated_totp.yml
-**Purpose**: Authentication and TOTP generation testing
-**Trigger**: Scheduled (weekdays at 3:45 AM UTC) and manual dispatch
-**Key Functions**:
-- Tests authentication flow with trading platform
-- Validates TOTP (Time-based One-Time Password) generation
-- Verifies session token management
-- Ensures login reliability before trading operations
-**Status**: Active workflow for continuous authentication monitoring
-### Workflow Benefits
-- **Automation**: Eliminates manual intervention for daily trading
-- **Consistency**: Executes strategy systematically without emotional bias
-- **Reliability**: Continuous testing of authentication and core logic
-- **Monitoring**: Provides logs and alerts for troubleshooting
-- **Security**: Credentials managed through GitHub Secrets
-## 🛠️ Setup Instructions
+
+### 1. Trade_Script_with_DB.yml (Main Trading Bot)
+- **Schedule**: Monday-Friday at 9:15 AM IST (`cron: '45 3 * * 1-5'`)
+- **Manual Trigger**: Available via GitHub Actions UI
+- **Function**: Executes complete trading cycle
+  - Login authentication
+  - Eligibility verification
+  - Price monitoring
+  - Purchase execution
+  - DynamoDB logging
+
+### 2. additional_quantity_logic.yml (Buy Logic Testing)
+- **Purpose**: Test and validate buy quantity calculations
+- **Manual Trigger Only**: For development and testing
+- **Use Case**: Verify logic changes before production deployment
+
+### 3. login_with_generated_totp.yml (Authentication Testing)
+- **Purpose**: Validate TOTP generation and login flow
+- **Manual Trigger Only**: For credential verification
+- **Use Case**: Troubleshoot authentication issues
+
+### Workflow Notification Improvements
+
+- **Structured Logging**: All transactions recorded with timestamps and prices
+- **Status Updates**: Real-time workflow status in GitHub Actions UI
+- **Error Handling**: Comprehensive error messages with actionable insights
+- **Purchase History**: Complete audit trail in DynamoDB
+
+## 🚀 Setup Instructions
+
 ### Prerequisites
+
 - Python 3.8+
-- AWS Account (for DynamoDB)
-- Trading platform account with API access
-- TOTP secret for two-factor authentication
+- AWS account (for DynamoDB)
+- GitHub account (for Actions)
+- Broker account credentials
+
 ### Installation
-1. Clone the repository:
-```bash
-git clone https://github.com/kriskingg/Beest.git
-cd Beest
-```
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-3. Set up environment variables:
-```bash
-export AWS_ACCESS_KEY_ID="your_access_key"
-export AWS_SECRET_ACCESS_KEY="your_secret_key"
-export AWS_DEFAULT_REGION="your_region"
-export TRADING_API_KEY="your_api_key"
-export TOTP_SECRET="your_totp_secret"
-```
-4. Configure DynamoDB tables:
-- Create table for stock data
-- Create table for transaction history
-- Set up appropriate indexes
-## 🚀 Usage
-### Running Locally
-```bash
-python rupeezy/main.py
-```
-### Running via GitHub Actions
-1. Set up GitHub Secrets:
-   - `AWS_ACCESS_KEY_ID`
-   - `AWS_SECRET_ACCESS_KEY`
-   - `TRADING_API_KEY`
-   - `TOTP_SECRET`
-2. Uncomment desired workflow in `.github/workflows/`
-3. Workflow will run on schedule or manual trigger
+
+1. **Clone Repository**
+   ```bash
+   git clone https://github.com/kriskingg/DSG.git
+   cd DSG
+   ```
+
+2. **Install Dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Configure AWS Credentials**
+   ```bash
+   aws configure
+   # Enter AWS Access Key ID
+   # Enter AWS Secret Access Key
+   # Default region: ap-south-1 (or your preferred region)
+   ```
+
+4. **Set Up GitHub Secrets**
+   - Go to Repository Settings → Secrets and Variables → Actions
+   - Add the following secrets:
+     - `USERID`: Your broker user ID
+     - `PASSWORD`: Your broker password
+     - `TOTP_SECRET`: Your TOTP secret key
+     - `AWS_ACCESS_KEY_ID`: AWS access key
+     - `AWS_SECRET_ACCESS_KEY`: AWS secret key
+
+5. **Configure Instruments**
+   - Edit `rupeezy_instruments_list.txt` to specify ETFs/stocks to monitor
+
+6. **Enable GitHub Actions**
+   - Go to Repository → Actions → Enable workflows
+
+### DynamoDB Table Setup
+
+Create a DynamoDB table with the following configuration:
+- **Table Name**: `beest-transactions` (or configure in code)
+- **Primary Key**: `transaction_id` (String)
+- **Region**: ap-south-1 (or your preferred region)
+
+## 💻 Usage
+
+### Automated Execution
+
+The bot runs automatically Monday-Friday at 9:15 AM IST via GitHub Actions.
+
+### Manual Execution
+
+1. Navigate to Actions tab in GitHub repository
+2. Select desired workflow (Trade_Script_with_DB.yml for production)
+3. Click "Run workflow" → Select branch (main) → Click "Run workflow"
+4. Monitor execution logs in real-time
+5. Review results in DynamoDB
+
 ### Monitoring
-- Check GitHub Actions logs for execution details
-- Monitor DynamoDB for transaction records
-- Review price drop alerts and purchase confirmations
+
+- **GitHub Actions Logs**: Real-time execution details and status updates
+- **DynamoDB Console**: Transaction history and purchase records
+- **Notifications**: Integrated alerts for price drops and purchases
+
 ## ⚙️ Configuration
-### Stock Eligibility
-Edit `rupeezy_instruments_list.txt` to modify the list of eligible stocks.
+
+### ETF and Stock Selection
+
+**File**: `rupeezy_instruments_list.txt`
+
+Currently configured for Defence, Gold, and Silver sector ETFs:
+
+```
+DEFENCE ETF SYMBOL
+GOLD ETF SYMBOL
+SILVER ETF SYMBOL
+```
+
+**Setup Notes:**
+- Add one instrument symbol per line
+- Use exact symbols as recognized by your broker platform
+- Defence ETFs: Track Indian defence sector stocks (e.g., HAL, BEL, BDL)
+- Gold ETFs: Track gold prices (e.g., GOLDBEES, GOLDSHARE)
+- Silver ETFs: Track silver prices (e.g., SILVERBEES, SILVERETF)
+- Must own at least 1 share of each instrument before bot activates
+- Bot will monitor all listed instruments during trading hours
+
+### Notification Logic Configuration
+
+**Default Notification Events:**
+1. **Eligibility Check**: When instruments are validated for monitoring
+2. **Price Drop Detection**: When drop threshold (3%/5%/6%) is met
+3. **Purchase Execution**: Confirmation with quantity, price, and timestamp
+4. **Error Events**: Authentication failures, API errors, execution issues
+
+**Customization**: Modify notification settings in workflow files and Python modules.
+
 ### Price Drop Thresholds
+
 Modify the threshold logic in `price_drop.py`:
+
 ```python
 def calculate_additional_quantity(drop_percentage):
     if drop_percentage >= 6:
-        return 4
+        return 4  # Aggressive buy on major dip
     elif drop_percentage >= 5:
-        return 3
+        return 3  # Moderate buy on significant dip
     elif drop_percentage >= 3:
-        return 2
+        return 2  # Conservative buy on minor dip
     else:
-        return 1
+        return 1  # Minimal buy for small movements
 ```
-### Schedule
-Adjust workflow schedules in workflow YAML files:
+
+### Workflow Schedule Configuration
+
+Adjust automated run timing in workflow YAML files:
+
+**File**: `.github/workflows/Trade_Script_with_DB.yml`
+
 ```yaml
-schedule:
-  - cron: '45 3 * * 1-5'  # Runs Mon-Fri at 9:15 AM IST
+on:
+  schedule:
+    - cron: '45 3 * * 1-5'  # 9:15 AM IST (3:45 AM UTC), Monday-Friday
+  workflow_dispatch:  # Enables manual triggering
 ```
+
+**Schedule Customization:**
+- Cron format: `minute hour day month weekday`
+- Default: 9:15 AM IST during market hours (Mon-Fri)
+- Adjust for different market monitoring times
+- `workflow_dispatch` enables manual runs via GitHub Actions UI
+
+### Manual vs. Scheduled Workflow Runs
+
+**Scheduled Runs:**
+- Automatic execution based on cron schedule
+- No user intervention required
+- Ideal for consistent market monitoring
+- Configured in workflow YAML under `schedule:`
+
+**Manual Runs:**
+- On-demand execution via GitHub Actions UI
+- Useful for testing, debugging, or opportunistic trades
+- Available for all workflows via `workflow_dispatch` trigger
+- Steps:
+  1. Go to Actions tab
+  2. Select workflow
+  3. Click "Run workflow"
+  4. Select branch and confirm
+
 ## 📝 Examples
-### Scenario 1: Normal Price Drop
+
+### Scenario 1: Defence ETF Price Drop
 ```
-Initial Purchase: Stock XYZ at ₹100
-Current Price: ₹97 (3% drop)
+Initial Purchase: DEFENCE ETF at ₹150
+Current Price: ₹145.50 (3% drop)
 Action: Buy 2 additional quantities
-Result: Average cost reduced, position increased
+Notification: "Defence ETF dropped 3% to ₹145.50. Purchased 2 shares."
+Result: Average cost reduced to ₹147.75, position increased
 ```
-### Scenario 2: Gap Down
+
+### Scenario 2: Gold ETF Gap Down
 ```
-Previous Close: ₹100
-Market Open: ₹94 (6% gap down)
+Previous Close: ₹5,000
+Market Open: ₹4,700 (6% gap down)
 Action: Buy 4 quantities immediately
-Result: Capitalized on gap-down opportunity
+Notification: "Gold ETF gap down 6% to ₹4,700. Purchased 4 shares."
+Result: Capitalized on panic selling, strong position at discount
 ```
-### Scenario 3: Redundancy Prevention
+
+### Scenario 3: Silver ETF Redundancy Prevention
 ```
-First drop to ₹97: Bought 2 quantities
-Price fluctuates between ₹96-₹98
-Action: No additional purchase until next threshold (₹95)
-Result: Avoided redundant purchases
+First drop to ₹70,000: Bought 2 quantities
+Price fluctuates between ₹69,500-₹71,000
+Action: No additional purchase until next threshold (₹68,000 = 5% drop)
+Notification: No alert sent (redundancy prevention active)
+Result: Avoided overbuying at same price level
 ```
+
 ## 🔮 Future Enhancements
-- Multi-broker support
-- Advanced technical indicators integration
+
+- Multi-broker support (Zerodha, Upstox, Angel One)
+- Advanced technical indicators integration (RSI, MACD, Moving Averages)
 - Machine learning for threshold optimization
 - Mobile app for real-time notifications
 - Portfolio rebalancing automation
 - Risk-adjusted position sizing
 - Backtesting framework
+- Expanded sector coverage (IT, Banking, Pharma ETFs)
+- Stop-loss automation
+- Profit-taking strategies
+
 ## ⚠️ Disclaimer
+
 This software is for educational purposes only. Use at your own risk. The authors assume no responsibility for financial losses. Always:
+
 - Test thoroughly in paper trading mode
 - Understand the code before running
 - Never invest more than you can afford to lose
 - Comply with all applicable regulations
 - Consult with financial advisors
+- Monitor automated trades regularly
+
 **Trading involves substantial risk of loss and is not suitable for every investor.**
+
+ETFs are subject to market risk, tracking error, and liquidity risks. Past performance is not indicative of future results.
