@@ -1,3 +1,5 @@
+# Workflow auto-trigger disabled as per requirement.
+
 # name: Run Trade Python Script with Database
 # 
 # on:
