@@ -1,79 +1,65 @@
-# # Here’s a clear write-up for the workflow you provided:
-
+# # Here's a clear write-up for the workflow you provided:
 # #   The workflow starts by checking out the repository and setting up a Python environment using version 3.8.
-
 # #   It installs required dependencies such as pyotp, requests, pytz, boto3, bs4, and python-dotenv.
-
 # #   A TOTP (Time-based One-Time Password) is generated using a secret stored in GitHub secrets.
-
 # #   The TOTP is then used to authenticate with the Rupeezy platform by running the login.py script, which retrieves an access token.
-
 # #   The access token is securely saved as a GitHub secret for future use.
-
 # #   Finally, the workflow runs the beest_eligibility_and_price_check.py script, which fetches stock data from the StockEligibility table in DynamoDB and compares it against stock data fetched from Chartink based on a predefined condition. The stock eligibility status is then updated in DynamoDB accordingly.
 # #   This workflow automates the process of logging in to Rupeezy, fetching and comparing stock data, and updating stock eligibility in DynamoDB.
 
-# name: Login with Generated TOTP and Save Access Token to Secrets
+name: Login with Generated TOTP and Save Access Token to Secrets
 
-# on:
-#   workflow_dispatch:  # Allows manual triggering of the workflow from the Actions tab
-#   schedule:
-#     - cron: "33 3 * * 1-5"  # Schedule job to run at 9:03 AM IST (3:33 AM UTC) on weekdays (Monday to Friday)
+on:
+  workflow_dispatch:  # Allows manual triggering of the workflow from the Actions tab
+  schedule:
+    - cron: "33 3 * * 1-5"  # Schedule job to run at 9:03 AM IST (3:33 AM UTC) on weekdays (Monday to Friday)
 
-# jobs:
-#   login_and_save_token:
-#     runs-on: ubuntu-latest
-
-#     steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v2
-
-#       - name: Set up Python
-#         uses: actions/setup-python@v2
-#         with:
-#           python-version: '3.8'
-
-#       - name: Install dependencies
-#         run: |
-#           pip install pyotp requests pytz boto3 bs4 python-dotenv
-
-#       - name: Generate TOTP
-#         env:
-#           TOTP_SECRET_KEY: ${{ secrets.TOTP_SECRET_KEY }}
-#         run: |
-#           TOTP=$(python -c 'import pyotp, os; print(pyotp.TOTP(os.getenv("TOTP_SECRET_KEY")).now())')
-#           echo "TOTP=$TOTP" >> $GITHUB_ENV  # Save TOTP as an environment variable
-
-#       - name: Run Login Script and Get Access Token
-#         id: get_access_token  # Set the ID to reference it later
-#         env:
-#           TOTP: ${{ env.TOTP }}  # Use the generated TOTP
-#           RUPEEZY_API_KEY: ${{ secrets.RUPEEZY_API_KEY }}
-#           RUPEEZY_CLIENT_CODE: ${{ secrets.RUPEEZY_CLIENT_CODE }}
-#           RUPEEZY_PASSWORD: ${{ secrets.RUPEEZY_PASSWORD }}
-#           RUPEEZY_APPLICATION_ID: ${{ secrets.RUPEEZY_APPLICATION_ID }}
-#         run: |
-#           token=$(python rupeezy/login.py)
-#           echo "TOKEN=$token" >> $GITHUB_ENV  # Save token for future steps
-
-#       - name: GitHub Authentication
-#         run: echo "$PAT_TOKEN" | gh auth login --with-token
-#         env:
-#           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
-
-#       - name: Set GitHub Secret with Access Token
-#         run: gh secret set RUPEEZY_ACCESS_TOKEN --body "$RUPEEZY_ACCESS_TOKEN"
-#         env:
-#           RUPEEZY_ACCESS_TOKEN: ${{ env.TOKEN }}  # Use the token directly
-
-#       - name: Send Telegram Notification
-#         if: always()  # Ensure the notification is sent regardless of success/failure
-#         env:
-#           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-#           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-#           TOTP: ${{ env.TOTP }}  # Include the TOTP in the environment for sending
-#         run: |
-#           message="Rupeezy login workflow has completed. Status: ${{ job.status }}. TOTP: ${{ env.TOTP }}"
-#           curl -s -X POST https://api.telegram.org/bot${{ env.TELEGRAM_TOKEN }}/sendMessage \
-#             -d chat_id=${{ env.TELEGRAM_CHAT_ID }} \
-#             -d text="$message"
+jobs:
+  login_and_save_token:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+      - name: Install dependencies
+        run: |
+          pip install pyotp requests pytz boto3 bs4 python-dotenv
+      - name: Generate TOTP
+        env:
+          TOTP_SECRET_KEY: ${{ secrets.TOTP_SECRET_KEY }}
+        run: |
+          TOTP=$(python -c 'import pyotp, os; print(pyotp.TOTP(os.getenv("TOTP_SECRET_KEY")).now())')
+          echo "TOTP=$TOTP" >> $GITHUB_ENV  # Save TOTP as an environment variable
+      - name: Run Login Script and Get Access Token
+        id: get_access_token  # Set the ID to reference it later
+        env:
+          TOTP: ${{ env.TOTP }}  # Use the generated TOTP
+          RUPEEZY_API_KEY: ${{ secrets.RUPEEZY_API_KEY }}
+          RUPEEZY_CLIENT_CODE: ${{ secrets.RUPEEZY_CLIENT_CODE }}
+          RUPEEZY_PASSWORD: ${{ secrets.RUPEEZY_PASSWORD }}
+          RUPEEZY_APPLICATION_ID: ${{ secrets.RUPEEZY_APPLICATION_ID }}
+        run: |
+          token=$(python rupeezy/login.py)
+          echo "TOKEN=$token" >> $GITHUB_ENV  # Save token for future steps
+      - name: GitHub Authentication
+        run: echo "$PAT_TOKEN" | gh auth login --with-token
+        env:
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+      - name: Set GitHub Secret with Access Token
+        run: gh secret set RUPEEZY_ACCESS_TOKEN --body "$RUPEEZY_ACCESS_TOKEN"
+        env:
+          RUPEEZY_ACCESS_TOKEN: ${{ env.TOKEN }}  # Use the token directly
+      - name: Send Telegram Notification
+        if: always()  # Ensure the notification is sent regardless of success/failure
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TOTP: ${{ env.TOTP }}  # Include the TOTP in the environment for sending
+        run: |
+          message="Rupeezy login workflow has completed. Status: ${{ job.status }}. TOTP: ${{ env.TOTP }}"
+          curl -s -X POST https://api.telegram.org/bot${{ env.TELEGRAM_TOKEN }}/sendMessage \
+            -d chat_id=${{ env.TELEGRAM_CHAT_ID }} \
+            -d text="$message"
