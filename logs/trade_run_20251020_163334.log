@@ -1,0 +1,10 @@
+2025-10-20 16:33:34,218 - INFO - =============================================
+2025-10-20 16:33:34,219 - INFO - 🧭 DSG Trading Orchestrator | 2025-10-20 16:33:34.219635
+2025-10-20 16:33:34,220 - INFO - 💼 Selected Broker : Rupeezy
+2025-10-20 16:33:34,220 - INFO - 📊 Selected Strategy : auto_buy_logic
+2025-10-20 16:33:34,221 - INFO - =============================================
+2025-10-20 16:33:34,221 - INFO - 🎯 Starting DSG Trade Orchestrator ...
+2025-10-20 16:33:34,221 - INFO - 🚀 Launching trading workflow for broker: Rupeezy
+2025-10-20 16:33:34,221 - INFO - 📦 Importing broker module: brokers.rupeezy.main
+2025-10-20 16:33:34,224 - ERROR - ❌ Broker module 'Rupeezy' not found in brokers/ directory.
+2025-10-20 16:33:34,225 - ERROR - 🛑 Broker module not found. Aborting execution.
