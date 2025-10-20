@@ -1,0 +1,60 @@
+name: Login with Generated TOTP and Save Access Token to Secrets
+on:
+  workflow_dispatch:  # Allows manual triggering of the workflow from the Actions tab
+  schedule:
+    - cron: "33 3 * * 1-5"  # Schedule job to run at 9:03 AM IST (3:33 AM UTC) on weekdays (Monday to Friday)
+jobs:
+  login_and_save_token:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+      - name: Install dependencies
+        run: |
+          pip install pyotp requests pytz boto3 bs4 python-dotenv
+      - name: Generate TOTP
+        env:
+          TOTP_SECRET_KEY: ${{ secrets.TOTP_SECRET_KEY }}
+        run: |
+          TOTP=$(python -c 'import pyotp, os; print(pyotp.TOTP(os.getenv("TOTP_SECRET_KEY")).now())')
+          echo "TOTP=$TOTP" >> $GITHUB_ENV
+      - name: Run Login Script and Get Access Token
+        id: get_access_token
+        env:
+          TOTP: ${{ env.TOTP }}
+          RUPEEZY_API_KEY: ${{ secrets.RUPEEZY_API_KEY }}
+          RUPEEZY_CLIENT_CODE: ${{ secrets.RUPEEZY_CLIENT_CODE }}
+          RUPEEZY_PASSWORD: ${{ secrets.RUPEEZY_PASSWORD }}
+          RUPEEZY_APPLICATION_ID: ${{ secrets.RUPEEZY_APPLICATION_ID }}
+        run: |
+          token=$(python rupeezy/login.py)
+          echo "TOKEN=$token" >> $GITHUB_ENV
+      - name: GitHub Authentication
+        run: echo "$PAT_TOKEN" | gh auth login --with-token
+        env:
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+      - name: Set GitHub Secret with Access Token
+        run: gh secret set RUPEEZY_ACCESS_TOKEN --body "$RUPEEZY_ACCESS_TOKEN"
+        env:
+          RUPEEZY_ACCESS_TOKEN: ${{ env.TOKEN }}
+      - name: Send Telegram Notification
+        if: always()
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TOTP: ${{ env.TOTP }}
+        run: |
+          JOB_STATUS="${{ job.status }}"
+          if [ "$JOB_STATUS" = "success" ]; then
+            MESSAGE="✅ Rupeezy Login - SUCCESS%0A%0AJob Status: $JOB_STATUS%0ATOTP: ${{ env.TOTP }}%0AWorkflow: ${{ github.workflow }}%0ARun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          else
+            MESSAGE="❌ Rupeezy Login - FAILED%0A%0AJob Status: $JOB_STATUS%0ATOTP: ${{ env.TOTP }}%0AWorkflow: ${{ github.workflow }}%0ARun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          fi
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
+            -d text="$MESSAGE" \
+            -d parse_mode="HTML"

@@ -1,0 +1,111 @@
+Mathematical Strategy for Additional Quantity Logic
+Overview
+This strategy is designed to automate the buying of additional quantities of stocks based on their percentage price drops relative to a predefined BuyValue. It is particularly effective in situations where a stock's price fluctuates, as the strategy ensures that we capitalize on price drops by buying more shares at lower prices.
+
+The strategy is implemented in Python and uses DynamoDB to store information about each stock, including:
+
+Instrument (e.g., ALPHAETF, NIFTYBEES)
+BuyValue (the price at which the stock was initially purchased)
+AdditionalQuantity (the number of shares to buy when the price drops by certain percentages)
+Eligibility Status (whether the stock is eligible for additional buying)
+The key concept revolves around percentage price drops from the BuyValue, with the strategy buying 1x, 2x, or more of the AdditionalQuantity based on the severity of the price drop.
+
+Mathematical Formula
+Percentage Price Drop Formula:
+To determine the percentage price drop, the formula is:
+
+Percentage Drop
+=
+BuyValue
+−
+Current Price
+BuyValue
+×
+100
+Percentage Drop= 
+BuyValue
+BuyValue−Current Price
+​
+ ×100
+Where:
+
+BuyValue is the price at which the stock was originally bought.
+Current Price is the current market price of the stock.
+Conditions for Additional Purchases:
+If the percentage drop is 1% or more but less than 2%, buy the AdditionalQuantity.
+If the percentage drop is 2% or more but less than 3%, buy twice the AdditionalQuantity.
+If the percentage drop is 3% or more, buy three times the AdditionalQuantity, and so on.
+Gap Down Scenario:
+If the market gaps down (opens significantly lower than the previous close):
+
+The script buys all the missed AdditionalQuantity based on the total percentage drop, skipping any intermediate levels.
+Examples
+Example 1: Price Drop During the Same Day
+Instrument: ALPHAETF
+BuyValue: 100
+AdditionalQuantity: 10
+Scenario:
+The price starts at 100 and drops to 99 (a 1% drop).
+Later in the same day, the price drops further to 98 (a 2% drop).
+Actions:
+At 99 (1% down): The script buys 10 units of ALPHAETF (AdditionalQuantity).
+At 98 (2% down): The script buys another 10 units.
+Summary:
+The script purchases 10 units at 99 and 10 more units at 98.
+Example 2: Gap Down Scenario
+Instrument: ALPHAETF
+BuyValue: 100
+AdditionalQuantity: 10
+Scenario:
+The previous day’s closing price was 100.
+The next day, the market gaps down and opens at 98, directly skipping the 1% drop level (99).
+Actions:
+The script buys 20 units (twice the AdditionalQuantity) at 98, because the price gapped down by 2%, skipping the chance to buy at 1%.
+Summary:
+The script purchases 20 units at 98 due to the gap-down opening.
+Example 3: Price Drop and Recovery on the Same Day
+Instrument: ALPHAETF
+BuyValue: 100
+AdditionalQuantity: 10
+Scenario:
+The price drops to 99 (a 1% drop).
+Later in the day, the price increases to 101, then drops back to 99.
+Actions:
+First Drop to 99: The script buys 10 units of ALPHAETF.
+Price Recovers to 101: No action is taken as the price increase doesn’t trigger any buy logic.
+Price Drops Back to 99: The script does not buy again at 99, since it has already bought at this level.
+Summary:
+The script purchases 10 units at 99 during the initial drop but does not buy again at the same price point.
+Example 4: Price Drop More Than 1% but Less Than 2%
+Instrument: ALPHAETF
+BuyValue: 100
+AdditionalQuantity: 10
+Scenario:
+The price drops to 98.5, which is a 1.5% drop from the BuyValue.
+Actions:
+The script treats this as a 1% drop, and buys 10 units (AdditionalQuantity).
+Summary:
+The script purchases 10 units at 98.5, considering it to be within the 1% range.
+Example 5: Continuous Price Drop to 3%
+Instrument: ALPHAETF
+BuyValue: 100
+AdditionalQuantity: 10
+Scenario:
+The price gradually drops from 100 to 97 throughout the day.
+Actions:
+At 99 (1% down): The script buys 10 units.
+At 98 (2% down): The script buys another 10 units.
+At 97 (3% down): The script buys another 10 units.
+Summary:
+The script purchases 10 units at 99, 10 units at 98, and 10 units at 97, as the price crosses each threshold.
+Key Considerations
+Avoid Redundant Buys: The strategy ensures that the script only buys at each percentage threshold once per price cycle. This avoids redundant buying if the price fluctuates back and forth across a threshold.
+
+Gap Down Scenario: When the market opens with a significant price drop (gap down), the script buys all the missed quantities at the open price.
+
+API Integration: The strategy relies on real-time price data, which can be obtained via stock market APIs (e.g., Yahoo Finance API or broker API). Accurate and timely data is crucial for the strategy to function correctly.
+
+Conclusion
+This strategy is an efficient way to buy additional shares of eligible stocks as their prices decline, taking advantage of both gradual declines and market gap downs. It is flexible enough to handle various price movements and ensures that the portfolio accumulates shares at increasingly lower prices during market dips.
+
+By implementing this strategy, we aim to maximize the potential for profit by buying more at lower prices, while adhering to a structured approach that minimizes risk and ensures consistency.

@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 __pycache__/
 *.pyc
 *.pyo
@@ -6,9 +6,16 @@ __pycache__/
 .Python
 .env
 *.env
+
 # VSCode / IDE
 .vscode/
 .idea/
+
 # System
 .DS_Store
 Thumbs.db
+
+# Ignore sensitive files
+variables.txt
+access_token.txt
+Docs
