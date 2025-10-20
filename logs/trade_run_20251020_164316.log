@@ -1,0 +1,15 @@
+2025-10-20 16:43:16,291 - INFO - =============================================
+2025-10-20 16:43:16,292 - INFO - 🧭 DSG Trading Orchestrator | 2025-10-20 16:43:16.292417
+2025-10-20 16:43:16,293 - INFO - 💼 Selected Broker : Rupezy
+2025-10-20 16:43:16,293 - INFO - 📊 Selected Strategy : auto_buy_logic
+2025-10-20 16:43:16,294 - INFO - =============================================
+2025-10-20 16:43:16,295 - INFO - 🎯 Starting DSG Trade Orchestrator ...
+2025-10-20 16:43:16,295 - INFO - 🚀 Launching trading workflow for broker: Rupezy
+2025-10-20 16:43:16,296 - INFO - 🔍 Checking possible paths for broker 'Rupezy':
+2025-10-20 16:43:16,296 - INFO -    - D:\DSG\brokers\rupezy\main.py
+2025-10-20 16:43:16,298 - INFO -    - D:\DSG\brokers\Rupezy\main.py
+2025-10-20 16:43:16,299 - INFO -    - D:\DSG\brokers\rupezy\main.py
+2025-10-20 16:43:16,300 - INFO -    - D:\DSG\brokers\Rupezy\main.py
+2025-10-20 16:43:16,300 - ERROR - ❌ Broker module 'Rupezy' not found.
+2025-10-20 16:43:16,302 - ERROR - 📁 Available brokers: ['Dhan', 'Kite', 'Kotak', 'rupeezy', '__pycache__']
+2025-10-20 16:43:16,303 - ERROR - 🛑 Broker module not found. Aborting execution.

@@ -1,0 +1,21 @@
+2025-10-20 16:53:22,526 - INFO - =============================================
+2025-10-20 16:53:22,527 - INFO - 🧭 DSG Trading Orchestrator | 2025-10-20 16:53:22.527504
+2025-10-20 16:53:22,528 - INFO - 💼 Selected Broker : rupeezy
+2025-10-20 16:53:22,528 - INFO - 📊 Selected Strategy : auto_buy_logic
+2025-10-20 16:53:22,528 - INFO - =============================================
+2025-10-20 16:53:22,529 - INFO - 🎯 Starting DSG Trade Orchestrator ...
+2025-10-20 16:53:22,529 - INFO - 🚀 Launching trading workflow for broker: rupeezy
+2025-10-20 16:53:22,529 - INFO - 🔍 Checking possible paths for broker 'rupeezy':
+2025-10-20 16:53:22,530 - INFO -    - D:\DSG\brokers\rupeezy\main.py
+2025-10-20 16:53:22,533 - INFO -    - D:\DSG\brokers\rupeezy\main.py
+2025-10-20 16:53:22,533 - INFO -    - D:\DSG\brokers\rupeezy\main.py
+2025-10-20 16:53:22,534 - INFO -    - D:\DSG\brokers\rupeezy\main.py
+2025-10-20 16:53:22,534 - INFO - ✅ Found broker module at: D:\DSG\brokers\rupeezy\main.py
+2025-10-20 16:53:22,571 - ERROR - 💥 Failed to execute broker module 'rupeezy': "'__name__' not in globals"
+Traceback (most recent call last):
+  File "D:\DSG\orchestrator\trade_controller.py", line 75, in load_broker_module
+    exec(code, module_globals)
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 14, in <module>
+KeyError: "'__name__' not in globals"
+2025-10-20 16:53:22,586 - ERROR - 🛑 Broker module not found. Aborting execution.

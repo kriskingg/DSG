@@ -1,0 +1,21 @@
+2025-10-20 16:48:13,225 - INFO - =============================================
+2025-10-20 16:48:13,225 - INFO - 🧭 DSG Trading Orchestrator | 2025-10-20 16:48:13.225727
+2025-10-20 16:48:13,226 - INFO - 💼 Selected Broker : rupeezy
+2025-10-20 16:48:13,226 - INFO - 📊 Selected Strategy : auto_buy_logic
+2025-10-20 16:48:13,227 - INFO - =============================================
+2025-10-20 16:48:13,227 - INFO - 🎯 Starting DSG Trade Orchestrator ...
+2025-10-20 16:48:13,228 - INFO - 🚀 Launching trading workflow for broker: rupeezy
+2025-10-20 16:48:13,228 - INFO - 🔍 Checking possible paths for broker 'rupeezy':
+2025-10-20 16:48:13,229 - INFO -    - D:\DSG\brokers\rupeezy\main.py
+2025-10-20 16:48:13,231 - INFO -    - D:\DSG\brokers\rupeezy\main.py
+2025-10-20 16:48:13,232 - INFO -    - D:\DSG\brokers\rupeezy\main.py
+2025-10-20 16:48:13,232 - INFO -    - D:\DSG\brokers\rupeezy\main.py
+2025-10-20 16:48:13,233 - INFO - ✅ Found broker module at: D:\DSG\brokers\rupeezy\main.py
+2025-10-20 16:48:15,195 - ERROR - 💥 Failed to execute broker module 'rupeezy': No module named 'brokers.rupeezy.price_drop'
+Traceback (most recent call last):
+  File "D:\DSG\orchestrator\trade_controller.py", line 75, in load_broker_module
+    exec(code, module_globals)
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 10, in <module>
+ModuleNotFoundError: No module named 'brokers.rupeezy.price_drop'
+2025-10-20 16:48:15,197 - ERROR - 🛑 Broker module not found. Aborting execution.

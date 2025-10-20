@@ -37,14 +37,14 @@ logging.basicConfig(
 # ============================================================
 # Configuration
 # ============================================================
-BROKER = os.getenv("BROKER", "Rupezy")
-STRATEGY = os.getenv("STRATEGY", "auto_buy_logic")
+BROKER = os.getenv("BROKER", "rupeezy").strip().lower()
+STRATEGY = os.getenv("STRATEGY", "auto_buy_logic").strip().lower()
 
 # ============================================================
-# Broker Loader (Absolute Path + Case Handling)
+# Broker Loader (Direct exec fallback)
 # ============================================================
 def load_broker_module(broker_name: str):
-    """Robust loader for brokers/<broker_name>/main.py (case-insensitive)."""
+    """Loads or executes the broker's main.py file dynamically."""
     broker_folder = broker_name.lower()
 
     possible_paths = [
@@ -58,11 +58,10 @@ def load_broker_module(broker_name: str):
     for path in possible_paths:
         logging.info(f"   - {path}")
 
-    # Pick the first valid file
     main_path = next((p for p in possible_paths if os.path.exists(p)), None)
 
     if not main_path:
-        logging.error(f"❌ Broker module '{broker_name}' not found in brokers/ directory.")
+        logging.error(f"❌ Broker module '{broker_name}' not found.")
         available = [d for d in os.listdir(BROKER_DIR) if os.path.isdir(os.path.join(BROKER_DIR, d))]
         logging.error(f"📁 Available brokers: {available}")
         return None
@@ -70,13 +69,14 @@ def load_broker_module(broker_name: str):
     logging.info(f"✅ Found broker module at: {main_path}")
 
     try:
-        spec = importlib.util.spec_from_file_location(f"brokers.{broker_folder}.main", main_path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        logging.info(f"✅ Broker '{broker_name}' loaded successfully.")
-        return module
+        module_globals = {}
+        with open(main_path, "r", encoding="utf-8") as f:
+            code = f.read()
+        exec(code, module_globals)
+        logging.info(f"✅ Executed {main_path} successfully.")
+        return module_globals
     except Exception as e:
-        logging.exception(f"💥 Failed to load broker module '{broker_name}': {e}")
+        logging.exception(f"💥 Failed to execute broker module '{broker_name}': {e}")
         return None
 
 # ============================================================
@@ -91,9 +91,15 @@ def run_trading_flow():
         return
 
     try:
-        if hasattr(module, "start_trading"):
+        if isinstance(module, dict) and "start_trading" in module:
+            logging.info("▶️ Calling start_trading() ...")
+            module["start_trading"]()
+        elif hasattr(module, "start_trading"):
             logging.info("▶️ Calling start_trading() ...")
             module.start_trading()
+        elif isinstance(module, dict) and "main" in module:
+            logging.info("▶️ Calling main() ...")
+            module["main"]()
         elif hasattr(module, "main"):
             logging.info("▶️ Calling main() ...")
             module.main()
