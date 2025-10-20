@@ -69,7 +69,11 @@ def load_broker_module(broker_name: str):
     logging.info(f"✅ Found broker module at: {main_path}")
 
     try:
-        module_globals = {}
+        # 🔧 FIX: add '__name__' and '__file__' to globals so __main__ runs properly
+        module_globals = {
+            "__name__": "__main__",
+            "__file__": main_path
+        }
         with open(main_path, "r", encoding="utf-8") as f:
             code = f.read()
         exec(code, module_globals)
