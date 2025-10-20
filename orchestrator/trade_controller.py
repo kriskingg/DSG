@@ -1,25 +1,11 @@
-"""
-trade_controller.py
--------------------
-Central orchestrator for DSG trading framework.
-
-Purpose:
-- Universal entry point for trading workflows.
-- Dynamically loads broker module (Rupeezy, Dhan, Kotak, etc.).
-- Executes broker's main/start_trading function.
-- Handles logging, UTF-8, and case-insensitive broker resolution.
-
-Author: Chaitanya / DSG Project
-"""
-
-import importlib
+import importlib.util
 import os
 import sys
-from datetime import datetime
 import logging
+from datetime import datetime
 
 # ============================================================
-# 0️⃣ System Path & Encoding Fixes
+# UTF-8 Fix & Path Setup
 # ============================================================
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -28,18 +14,17 @@ except Exception:
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BROKER_DIR = os.path.join(ROOT_DIR, "brokers")
-
-for path in [ROOT_DIR, BROKER_DIR]:
-    if path not in sys.path:
-        sys.path.append(path)
-
-# ============================================================
-# 1️⃣ Logging Setup
-# ============================================================
 LOG_DIR = os.path.join(ROOT_DIR, "logs")
 os.makedirs(LOG_DIR, exist_ok=True)
-log_file = os.path.join(LOG_DIR, f"trade_run_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
 
+for p in [ROOT_DIR, BROKER_DIR]:
+    if p not in sys.path:
+        sys.path.append(p)
+
+# ============================================================
+# Logging
+# ============================================================
+log_file = os.path.join(LOG_DIR, f"trade_run_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
@@ -50,38 +35,54 @@ logging.basicConfig(
 )
 
 # ============================================================
-# 2️⃣ Configuration (Dynamic Environment Variables)
+# Configuration
 # ============================================================
 BROKER = os.getenv("BROKER", "Rupezy")
 STRATEGY = os.getenv("STRATEGY", "auto_buy_logic")
 
 # ============================================================
-# 3️⃣ Helper: Load Broker Module (Case-insensitive)
+# Broker Loader (Absolute Path + Case Handling)
 # ============================================================
 def load_broker_module(broker_name: str):
-    """Dynamically import the selected broker module (case-insensitive)."""
+    """Robust loader for brokers/<broker_name>/main.py (case-insensitive)."""
     broker_folder = broker_name.lower()
-    module_path = f"brokers.{broker_folder}.main"
 
-    logging.info(f"📦 Importing broker module: {module_path}")
-    try:
-        module = importlib.import_module(module_path)
-        logging.info(f"✅ Broker module '{broker_name}' loaded successfully.")
-        return module
-    except ModuleNotFoundError:
+    possible_paths = [
+        os.path.join(BROKER_DIR, broker_folder, "main.py"),
+        os.path.join(BROKER_DIR, broker_name, "main.py"),
+        os.path.join(ROOT_DIR, "brokers", broker_folder, "main.py"),
+        os.path.join(ROOT_DIR, "brokers", broker_name, "main.py"),
+    ]
+
+    logging.info(f"🔍 Checking possible paths for broker '{broker_name}':")
+    for path in possible_paths:
+        logging.info(f"   - {path}")
+
+    # Pick the first valid file
+    main_path = next((p for p in possible_paths if os.path.exists(p)), None)
+
+    if not main_path:
         logging.error(f"❌ Broker module '{broker_name}' not found in brokers/ directory.")
         available = [d for d in os.listdir(BROKER_DIR) if os.path.isdir(os.path.join(BROKER_DIR, d))]
         logging.error(f"📁 Available brokers: {available}")
         return None
+
+    logging.info(f"✅ Found broker module at: {main_path}")
+
+    try:
+        spec = importlib.util.spec_from_file_location(f"brokers.{broker_folder}.main", main_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        logging.info(f"✅ Broker '{broker_name}' loaded successfully.")
+        return module
     except Exception as e:
-        logging.error(f"⚠️ Error loading broker module '{broker_name}': {e}")
+        logging.exception(f"💥 Failed to load broker module '{broker_name}': {e}")
         return None
 
 # ============================================================
-# 4️⃣ Main Trading Flow
+# Trading Flow
 # ============================================================
 def run_trading_flow():
-    """Run the complete trading orchestration flow."""
     logging.info(f"🚀 Launching trading workflow for broker: {BROKER}")
     module = load_broker_module(BROKER)
 
@@ -97,7 +98,7 @@ def run_trading_flow():
             logging.info("▶️ Calling main() ...")
             module.main()
         else:
-            logging.warning("⚠️ No entry function (main/start_trading) found in broker module.")
+            logging.warning("⚠️ No entry function (main/start_trading) found.")
     except Exception as e:
         logging.exception(f"💥 Trading execution failed: {e}")
     finally:
@@ -105,7 +106,7 @@ def run_trading_flow():
         logging.info(f"🗂 Log saved to: {log_file}")
 
 # ============================================================
-# 5️⃣ Entrypoint
+# Entrypoint
 # ============================================================
 if __name__ == "__main__":
     logging.info("=" * 45)
