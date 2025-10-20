@@ -19,65 +19,69 @@ from datetime import datetime
 import logging
 
 # ============================================================
+# 0️⃣ System Path + Encoding Fixes (for Windows compatibility)
+# ============================================================
+
+# Ensure UTF-8 output on Windows (fixes emoji logging)
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
+# Ensure the project root (D:\DSG) is on sys.path
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT_DIR not in sys.path:
+    sys.path.append(ROOT_DIR)
+
+# ============================================================
 # 1️⃣ Logging setup
 # ============================================================
 
-LOG_DIR = os.path.join(os.path.dirname(__file__), "..", "logs")
+LOG_DIR = os.path.join(ROOT_DIR, "logs")
 os.makedirs(LOG_DIR, exist_ok=True)
 
 log_file = os.path.join(LOG_DIR, f"trade_run_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler(log_file),
+        logging.FileHandler(log_file, encoding="utf-8"),
         logging.StreamHandler(sys.stdout)
     ]
 )
 
 # ============================================================
-# 2️⃣ Configuration
+# 2️⃣ Configuration (you can make these dynamic later)
 # ============================================================
 
-# Allow broker selection via environment variable or command-line arg
-BROKER = os.getenv("BROKER_NAME", "Rupeezy").capitalize()
-
-# Allow optional strategy override in the future
-STRATEGY = os.getenv("STRATEGY", "auto_buy_logic").lower()
-
-# Display header
-logging.info("==============================================")
-logging.info(f"🧭 DSG Trading Orchestrator | {datetime.now()}")
-logging.info(f"💼 Selected Broker : {BROKER}")
-logging.info(f"📊 Selected Strategy : {STRATEGY}")
-logging.info("==============================================")
-
+BROKER = os.getenv("BROKER", "Rupeezy")
+STRATEGY = os.getenv("STRATEGY", "auto_buy_logic")
 
 # ============================================================
-# 3️⃣ Dynamic Broker Loading
+# 3️⃣ Helper: Broker module loader
 # ============================================================
 
 def load_broker_module(broker_name: str):
-    """Dynamically import the broker module."""
+    """Dynamically import the selected broker module."""
+    module_path = f"brokers.{broker_name.lower()}.main"
+    logging.info(f"📦 Importing broker module: {module_path}")
     try:
-        module_path = f"brokers.{broker_name.lower()}.main"
-        logging.info(f"📦 Importing broker module: {module_path}")
         module = importlib.import_module(module_path)
         return module
     except ModuleNotFoundError:
         logging.error(f"❌ Broker module '{broker_name}' not found in brokers/ directory.")
         return None
     except Exception as e:
-        logging.error(f"⚠️ Unexpected error importing broker '{broker_name}': {e}")
+        logging.error(f"⚠️ Error loading broker module '{broker_name}': {e}")
         return None
 
-
 # ============================================================
-# 4️⃣ Execution Flow
+# 4️⃣ Main trading flow
 # ============================================================
 
 def run_trading_flow():
-    """Run the selected broker's trading logic."""
+    """Run the complete trading orchestration flow."""
     logging.info(f"🚀 Launching trading workflow for broker: {BROKER}")
 
     module = load_broker_module(BROKER)
@@ -86,28 +90,31 @@ def run_trading_flow():
         return
 
     try:
-        # If the broker module has a start_trading() function, run it
+        # Detect if module has main or start_trading
         if hasattr(module, "start_trading"):
-            logging.info("▶️ Executing broker.start_trading()...")
+            logging.info("▶️ Calling start_trading() ...")
             module.start_trading()
-        # Else if it has a main() fallback
         elif hasattr(module, "main"):
-            logging.info("▶️ Executing broker.main()...")
+            logging.info("▶️ Calling main() ...")
             module.main()
         else:
-            logging.warning(f"⚠️ Broker '{BROKER}' module has no entry function defined.")
-            logging.info("Expected one of: start_trading() or main().")
+            logging.warning("⚠️ No entry function (main/start_trading) found in module.")
     except Exception as e:
-        logging.error(f"💥 Error while executing {BROKER} workflow: {e}", exc_info=True)
+        logging.exception(f"💥 Trading execution failed: {e}")
     finally:
-        logging.info("✅ Trading session finished.")
-        logging.info("==============================================")
-
+        logging.info("✅ Orchestration complete.")
+        logging.info(f"📄 Log saved to: {log_file}")
 
 # ============================================================
-# 5️⃣ CLI Entry Point
+# 5️⃣ Entrypoint
 # ============================================================
 
 if __name__ == "__main__":
+    logging.info("=" * 45)
+    logging.info(f"🧭 DSG Trading Orchestrator | {datetime.now()}")
+    logging.info(f"💼 Selected Broker : {BROKER}")
+    logging.info(f"📊 Selected Strategy : {STRATEGY}")
+    logging.info("=" * 45)
     logging.info("🎯 Starting DSG Trade Orchestrator ...")
+
     run_trading_flow()
