@@ -42,7 +42,6 @@ access_token = os.getenv("RUPEEZY_ACCESS_TOKEN")
 client = AsthaTradeVortexAPI(api_secret, application_id)
 client.access_token = access_token
 
-
 # ============================================================
 # 4️⃣ DynamoDB Helpers
 # ============================================================
@@ -98,7 +97,6 @@ def update_first_day_processed(instrument_name):
         logging.info(f"✅ FirstDayProcessed flag set for {instrument_name}")
     except Exception as e:
         logging.error(f"Error updating FirstDayProcessed for {instrument_name}: {e}")
-
 
 # ============================================================
 # 5️⃣ Broker API Helpers
@@ -166,10 +164,13 @@ def fetch_positions():
         logging.error(f"Error fetching positions: {e}")
         return None
 
-
 # ============================================================
 # 6️⃣ Core Execution Logic
 # ============================================================
+
+def run(broker=None):
+    """Entry point for orchestrator-compatible execution."""
+    run_auto_buy_flow()
 
 def run_auto_buy_flow():
     """Main function to fetch eligible stocks and place first-day buy orders."""
@@ -227,14 +228,12 @@ def run_auto_buy_flow():
                 except Exception as e:
                     logging.error(f"⚠️ Error updating base for {instrument_name}: {e}")
 
-    # Fetch and log positions
     fetch_positions()
     logging.info("🏁 Auto-buy flow complete.")
-
 
 # ============================================================
 # 7️⃣ CLI Entrypoint
 # ============================================================
 
 if __name__ == "__main__":
-    run_auto_buy_flow()
+    run()
