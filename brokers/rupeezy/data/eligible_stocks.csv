@@ -1,0 +1,4 @@
+﻿InstrumentName,EligibilityStatus,DefaultQuantity,BaseValue,FirstDayProcessed
+MODEFENCE,Eligible,5,0,False
+GOLDBEES,Eligible,2,0,False
+SILVERBEES,Eligible,2,0,False
