@@ -3,7 +3,9 @@
 import os
 import logging
 from datetime import datetime
-from login import rupeezy_login
+
+# Fix import for same-folder login.py
+from .login import rupeezy_login  # NOTE: This is a relative import for package execution
 
 # Set up logging
 logging.basicConfig(
