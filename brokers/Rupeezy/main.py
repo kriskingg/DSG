@@ -1,7 +1,6 @@
+# File: main.py at root of DSG
 import os
-import importlib
 import logging
-import sys
 from datetime import datetime
 
 # Set up logging
@@ -9,10 +8,6 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
-
-# =============================================
-# 🚀 Orchestrator Entry Point
-# =============================================
 
 def load_broker_module(broker_name):
     logging.info(f"🚀 Launching trading workflow for broker: {broker_name}")
@@ -27,11 +22,7 @@ def load_broker_module(broker_name):
     for path in possible_paths:
         logging.info(f"   - {path}")
 
-    main_path = None
-    for path in possible_paths:
-        if os.path.exists(path):
-            main_path = path
-            break
+    main_path = next((p for p in possible_paths if os.path.exists(p)), None)
 
     if main_path is None:
         logging.error(f"❌ Could not find broker module for '{broker_name}'")
@@ -39,7 +30,6 @@ def load_broker_module(broker_name):
 
     logging.info(f"✅ Found broker module at: {main_path}")
     try:
-        # Set up globals to allow relative imports
         module_globals = {
             "__file__": main_path,
             "__name__": "__main__",
@@ -52,8 +42,7 @@ def load_broker_module(broker_name):
         exec(code, module_globals)
 
     except Exception as e:
-        logging.error(f"💥 Failed to execute broker module '{broker_name}': {e}")
-        logging.exception(e)
+        logging.exception(f"💥 Failed to execute broker module '{broker_name}': {e}")
         logging.error("🛑 Broker module not found. Aborting execution.")
 
 def main():
@@ -67,5 +56,8 @@ def main():
     logging.info("🎯 Starting DSG Trade Orchestrator ...")
     load_broker_module(broker)
 
-if __name__ == "__main__":
+# DO NOT call main() directly when broker/main.py is loaded via exec()
+# This prevents recursion in orchestrator execution
+if os.getenv("RUN_BROKER_MAIN") == "true":
     main()
+
