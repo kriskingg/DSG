@@ -5,7 +5,7 @@ import logging
 from datetime import datetime
 
 # Fix import for same-folder login.py
-from .login import rupeezy_login  # NOTE: This is a relative import for package execution
+from brokers.rupeezy.login import rupeezy_login
 
 # Set up logging
 logging.basicConfig(
