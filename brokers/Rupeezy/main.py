@@ -1,7 +1,9 @@
-# File: main.py at root of DSG
+# brokers/rupeezy/main.py
+
 import os
 import logging
 from datetime import datetime
+from login import rupeezy_login
 
 # Set up logging
 logging.basicConfig(
@@ -9,55 +11,33 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
 
-def load_broker_module(broker_name):
-    logging.info(f"🚀 Launching trading workflow for broker: {broker_name}")
-    possible_paths = [
-        f"D:/DSG/brokers/{broker_name}/main.py",
-        f"./brokers/{broker_name}/main.py",
-        f"brokers/{broker_name}/main.py",
-        os.path.join(os.getcwd(), "brokers", broker_name, "main.py")
-    ]
-
-    logging.info(f"🔍 Checking possible paths for broker '{broker_name}':")
-    for path in possible_paths:
-        logging.info(f"   - {path}")
-
-    main_path = next((p for p in possible_paths if os.path.exists(p)), None)
-
-    if main_path is None:
-        logging.error(f"❌ Could not find broker module for '{broker_name}'")
-        return
-
-    logging.info(f"✅ Found broker module at: {main_path}")
-    try:
-        module_globals = {
-            "__file__": main_path,
-            "__name__": "__main__",
-            "__package__": f"brokers.{broker_name}"
-        }
-
-        with open(main_path, "r", encoding="utf-8") as f:
-            code = f.read()
-
-        exec(code, module_globals)
-
-    except Exception as e:
-        logging.exception(f"💥 Failed to execute broker module '{broker_name}': {e}")
-        logging.error("🛑 Broker module not found. Aborting execution.")
+def run_strategy(client, strategy_name):
+    if strategy_name == "auto_buy_logic":
+        logging.info("🚀 Executing Auto Buy Logic")
+        # TODO: Import and run your strategy here
+        # from strategies.auto_buy_logic import run
+        # run(client)
+        logging.info("✅ Auto Buy Logic completed (placeholder)")
+    else:
+        logging.warning(f"⚠️ Unknown strategy: {strategy_name}")
 
 def main():
     logging.info("=============================================")
-    logging.info(f"🧭 DSG Trading Orchestrator | {datetime.now()}")
-    broker = os.getenv("BROKER", "rupeezy")
+    logging.info(f"📈 Rupeezy Broker Launcher | {datetime.now()}")
+
     strategy = os.getenv("STRATEGY", "auto_buy_logic")
-    logging.info(f"💼 Selected Broker : {broker}")
-    logging.info(f"📊 Selected Strategy : {strategy}")
+    logging.info(f"📊 Strategy to execute: {strategy}")
+
+    logging.info("🔐 Logging in to Rupeezy ...")
+    client = rupeezy_login()
+
+    if client:
+        logging.info("✅ Login successful")
+        run_strategy(client, strategy)
+    else:
+        logging.error("❌ Login failed. Aborting strategy execution.")
+
     logging.info("=============================================")
-    logging.info("🎯 Starting DSG Trade Orchestrator ...")
-    load_broker_module(broker)
 
-# DO NOT call main() directly when broker/main.py is loaded via exec()
-# This prevents recursion in orchestrator execution
-if os.getenv("RUN_BROKER_MAIN") == "true":
+if __name__ == "__main__":
     main()
-
